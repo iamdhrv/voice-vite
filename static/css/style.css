@@ -1,0 +1,202 @@
+/* static/css/style.css */
+
+/* Inspired by Airtable and Stripe, following DESIGN.md */
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #F8F9FA; /* Light Gray */
+    color: #343A40; /* Dark Gray/Black */
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 700px;
+    background-color: #FFFFFF; /* White */
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+h1, h2 {
+    color: #343A40;
+    font-family: 'Inter Bold', sans-serif;
+    margin-bottom: 0.75em;
+}
+
+h1 {
+    font-size: 2.2em;
+    text-align: center;
+}
+
+h2 {
+    font-size: 1.6em;
+    border-bottom: 1px solid #E9ECEF;
+    padding-bottom: 0.5em;
+    margin-top: 1.5em;
+}
+
+.form-group {
+    margin-bottom: 1.5em;
+}
+
+label {
+    display: block;
+    font-weight: 500; /* Inter Medium */
+    margin-bottom: 0.5em;
+    color: #495057;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #CED4DA;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 1em;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+textarea:focus,
+select:focus {
+    border-color: #4A90E2; /* Primary Color */
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.btn {
+    display: inline-block;
+    font-weight: 500; /* Inter Medium */
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    background-color: transparent;
+    border: 1px solid transparent;
+    padding: 10px 20px;
+    font-size: 1em;
+    border-radius: 6px;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.btn-primary {
+    color: #FFFFFF;
+    background-color: #4A90E2; /* Primary Color */
+    border-color: #4A90E2;
+}
+
+.btn-primary:hover {
+    background-color: #357ABD; /* Darker Primary */
+    border-color: #357ABD;
+}
+
+.btn-secondary {
+    color: #4A90E2;
+    background-color: transparent;
+    border-color: #4A90E2;
+}
+
+.btn-secondary:hover {
+    color: #FFFFFF;
+    background-color: #4A90E2;
+}
+
+.flash-messages {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 1.5em;
+}
+
+.flash-messages li {
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    font-size: 0.95em;
+}
+
+.flash-success {
+    background-color: #D4EDDA; /* Light Green */
+    color: #155724; /* Dark Green */
+    border: 1px solid #C3E6CB;
+}
+
+.flash-error {
+    background-color: #F8D7DA; /* Light Red */
+    color: #721C24; /* Dark Red */
+    border: 1px solid #F5C6CB;
+}
+
+.flash-info {
+    background-color: #D1ECF1; /* Light Teal */
+    color: #0C5460; /* Dark Teal */
+    border: 1px solid #BEE5EB;
+}
+
+.file-input-wrapper {
+    border: 2px dashed #CED4DA;
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease-in-out;
+}
+
+.file-input-wrapper:hover {
+    border-color: #4A90E2;
+}
+
+.file-input-wrapper input[type="file"] {
+    display: none; /* Hide the default file input */
+}
+
+.file-input-text {
+    color: #6C757D; /* Medium Gray */
+}
+
+.file-name-display {
+    margin-top: 10px;
+    font-style: italic;
+    color: #495057;
+}
+
+/* Accessibility */
+*:focus {
+    outline: 2px solid #50E3C2; /* Teal for focus outline */
+    outline-offset: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        padding: 20px;
+    }
+    h1 {
+        font-size: 1.8em;
+    }
+    h2 {
+        font-size: 1.4em;
+    }
+}
