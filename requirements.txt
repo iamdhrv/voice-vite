@@ -1,9 +1,8 @@
-Flask
+flask
 python-dotenv
 requests
-vapi
 elevenlabs
-airtable-python-wrapper
+pyairtable
 # For Grok or other LLMs, a specific client might be needed, or 'requests' for generic API calls.
 # Add specific LLM client if known, e.g., openai, anthropic
 
