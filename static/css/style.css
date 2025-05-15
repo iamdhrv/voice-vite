@@ -57,6 +57,7 @@ input[type="text"],
 input[type="email"],
 input[type="date"],
 input[type="time"],
+input[type="tel"],
 textarea,
 select {
     width: 100%;
@@ -72,6 +73,7 @@ input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="date"]:focus,
 input[type="time"]:focus,
+input[type="tel"]:focus,
 textarea:focus,
 select:focus {
     border-color: #4A90E2; /* Primary Color */
@@ -179,6 +181,72 @@ textarea {
     color: #495057;
 }
 
+/* Define the hidden class */
+.hidden {
+    display: none !important;
+}
+
+/* Modern Radio Button Styles */
+.radio-group {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px 12px;
+    border: 1px solid #CED4DA;
+    border-radius: 6px;
+    background-color: #F8F9FA;
+    transition: all 0.15s ease-in-out;
+}
+
+.radio-option:hover {
+    background-color: #E9ECEF;
+    border-color: #4A90E2;
+}
+
+.radio-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.radio-custom {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #CED4DA;
+    border-radius: 50%;
+    margin-right: 8px;
+    position: relative;
+    transition: all 0.15s ease-in-out;
+}
+
+.radio-option input[type="radio"]:checked + .radio-custom {
+    border-color: #4A90E2;
+    background-color: #4A90E2;
+}
+
+.radio-option input[type="radio"]:checked + .radio-custom::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background-color: #FFFFFF;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.radio-option input[type="radio"]:focus + .radio-custom {
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+}
+
 /* Accessibility */
 *:focus {
     outline: 2px solid #50E3C2; /* Teal for focus outline */
@@ -198,5 +266,12 @@ textarea {
     }
     h2 {
         font-size: 1.4em;
+    }
+    .radio-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .radio-option {
+        padding: 10px;
     }
 }

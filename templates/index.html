@@ -85,13 +85,17 @@
             <!-- Guest Input Toggle -->
             <div class="form-group">
                 <label>Guest Input Method</label>
-                <div>
-                    <input type="radio" id="single-number" name="guest_input_method" value="single" onchange="toggleGuestInput()" checked>
-                    <label for="single-number" class="inline-block ml-2">Single Phone Number</label>
-                </div>
-                <div>
-                    <input type="radio" id="csv-upload" name="guest_input_method" value="csv" onchange="toggleGuestInput()">
-                    <label for="csv-upload" class="inline-block ml-2">Upload CSV Guest List</label>
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input type="radio" id="single-number" name="guest_input_method" value="single" checked>
+                        <span class="radio-custom"></span>
+                        Single Phone Number
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" id="csv-upload" name="guest_input_method" value="csv">
+                        <span class="radio-custom"></span>
+                        Upload CSV Guest List
+                    </label>
                 </div>
             </div>
 
@@ -198,14 +202,14 @@
             const singleSection = document.getElementById('single-number-section');
             const csvSection = document.getElementById('csv-upload-section');
             const method = document.querySelector('input[name="guest_input_method"]:checked').value;
-            
-            if (method !== 'csv-upload') {
+
+            if (method === 'single') {
                 singleSection.classList.remove('hidden');
                 csvSection.classList.add('hidden');
                 document.getElementById('guest_name').required = true;
                 document.getElementById('guest_phone').required = true;
                 document.getElementById('guest_list').required = false;
-            } else {
+            } else if (method === 'csv') {
                 singleSection.classList.add('hidden');
                 csvSection.classList.remove('hidden');
                 document.getElementById('guest_name').required = false;
@@ -233,25 +237,17 @@
             }
         }
 
-        // Initial setup
+        // Initial setup with simplified event listener
         document.addEventListener('DOMContentLoaded', () => {
-            // Ensure the correct section is shown based on the default selected radio button
+            // Set up event listeners for radio buttons
+            const radioButtons = document.querySelectorAll('input[name="guest_input_method"]');
+            radioButtons.forEach(button => {
+                button.addEventListener('change', toggleGuestInput);
+            });
+
+            // Call toggleGuestInput to set initial state
             toggleGuestInput();
-            
-            // Add event listeners to radio buttons to ensure toggleGuestInput is called when they change
-            document.getElementById('single-number').addEventListener('change', toggleGuestInput);
-            document.getElementById('csv-upload').addEventListener('change', toggleGuestInput);
         });
-        
-        // We'll use a small delay to ensure DOM is accessible if script runs before DOMContentLoaded
-        // This helps ensure the form is in the correct state regardless of when the script executes
-        if (document.readyState === 'loading') {
-            // If document is still loading, wait for DOMContentLoaded
-            // toggleGuestInput will be called by the event listener above
-        } else {
-            // If document is already loaded (rare but possible), call immediately
-            toggleGuestInput();
-        }
     </script>
 </body>
 </html>
