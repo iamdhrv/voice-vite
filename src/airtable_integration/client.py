@@ -57,12 +57,15 @@ class AirtableClient:
         except Exception as e:
             print(f"Error updating guest call status in Airtable: {e}")
 
-    def log_rsvp(self, guest_id: str, event_id: str, response: str) -> str | None:
+    def log_rsvp(self, guest_id: str, event_id: str, response: object) -> str | None:
         try:
             rsvp_data = {
                 'GuestID': [guest_id],  # Linked field expects a list
                 'EventID': [event_id],  # Linked field expects a list
-                'Response': response
+                'Summary': response.summary,
+                'Response': response.structuredData['rsvp_response'],
+                'SpecialRequest': response.structuredData['special_request'],
+                'ReminderRequest': response.structuredData['reminder_call_details'],
             }
             print(f"Logging RSVP with data: {rsvp_data}")
             record = self.rsvps_table.create(rsvp_data)

@@ -30,17 +30,14 @@ def allowed_file(filename):
     """Checks if the uploaded file has an allowed extension (CSV)."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in config.ALLOWED_EXTENSIONS
 
-def initiate_vapi_call(event_id, guest_id, guest_name, phone_number, voice_sample_id):
-    """Initiates a Vapi call to a guest with the specified voice."""
+def initiate_vapi_call(event_id, guest_id, guest_name, phone_number, voice_sample_id, event_details):
+    """Initiates a Vapi call to a guest with the specified voice and event details."""
     try:
         call_id = vapi_handler.make_outbound_call(
             phone_number=phone_number,
             assistant_id=config.VAPI_ASSISTANT_ID,
             guest_name=guest_name,
-            event_details={
-                "eventId": event_id,
-                "voiceSampleId": voice_sample_id
-            },
+            event_details=event_details,
             guest_id_airtable=guest_id
         )
 
@@ -62,21 +59,48 @@ def index():
             flash('Voice training must be completed before creating an event.', 'error')
             return redirect(request.url)
 
+        host_name = request.form.get('host_name')
         event_type = request.form.get('event_type')
         event_date = request.form.get('event_date')
+        event_time = request.form.get('event_time')
+        duration = request.form.get('duration')
         location = request.form.get('location')
         cultural_preferences = request.form.get('cultural_prefs')
+        special_instructions = request.form.get('special_instructions')
+        rsvp_deadline = request.form.get('rsvp_deadline')
         user_email = request.form.get('email')
         guest_input_method = request.form.get('guest_input_method')
 
+        # Prepare event details for Vapi call using form data
+        event_details = {
+            "eventId": "",  # Will be populated after creating the event
+            "voiceSampleId": voice_sample_id,
+            "hostName": host_name,
+            "eventType": event_type,
+            "eventDate": event_date,
+            "eventTime": event_time,
+            "location": location,
+            "culturalPreferences": cultural_preferences or "",
+            "duration": duration,
+            "specialInstructions": special_instructions or "",
+            "rsvpDeadline": rsvp_deadline
+        }
+
+        # Use field names exactly as defined in Airtable
         event_data = {
+            'HostName': host_name,
             'EventType': event_type,
             'EventDate': event_date,
+            'EventTime': event_time,
+            'Duration': duration,
             'Location': location,
             'CulturalPreferences': cultural_preferences,
+            'SpecialInstructions': special_instructions,
+            'RSVPDeadline': rsvp_deadline,
             'UserEmail': user_email,
             'VoiceSampleID': voice_sample_id,
-            'Status': 'Pending'
+            'Status': 'Pending',
+            'GuestListCSVPath': None
         }
 
         if guest_input_method == 'single':
@@ -97,12 +121,13 @@ def index():
                 flash('Failed to create event in Airtable.', 'error')
                 return redirect(request.url)
             print(f"Created event with ID: {event_id}")  # Debug
+            event_details["eventId"] = event_id  # Update eventId in event_details
             guest_id = airtable_client.add_guest(event_id, {'GuestName': guest_name, 'PhoneNumber': guest_phone})
             if not guest_id:
                 flash('Failed to add guest to Airtable.', 'error')
                 return redirect(request.url)
-            # Initiate Vapi call
-            initiate_vapi_call(event_id, guest_id, guest_name, guest_phone, voice_sample_id)
+            # Initiate Vapi call with full event details
+            initiate_vapi_call(event_id, guest_id, guest_name, guest_phone, voice_sample_id, event_details)
         else:
             if 'guest_list' not in request.files:
                 flash('No guest list file part', 'error')
@@ -121,6 +146,7 @@ def index():
                     flash('Failed to create event in Airtable.', 'error')
                     return redirect(request.url)
                 print(f"Created event with ID: {event_id}")  # Debug
+                event_details["eventId"] = event_id  # Update eventId in event_details
                 guests = parse_csv_to_guests(csv_path)
                 if not guests:
                     flash('No valid guests found in CSV.', 'error')
@@ -128,7 +154,7 @@ def index():
                 guest_ids = airtable_client.add_guests_batch(event_id, guests)
                 flash(f'{len(guests)} guests processed from CSV.', 'info')
                 for guest, guest_id in zip(guests, guest_ids):
-                    initiate_vapi_call(event_id, guest_id, guest['GuestName'], guest['PhoneNumber'], voice_sample_id)
+                    initiate_vapi_call(event_id, guest_id, guest['GuestName'], guest['PhoneNumber'], voice_sample_id, event_details)
             else:
                 flash('Invalid file type. Please upload a CSV file.', 'error')
                 return redirect(request.url)
@@ -196,6 +222,52 @@ def success():
 def uploaded_file(filename):
     """Serves uploaded files."""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# Add webhook endpoint to log Vapi events
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    """Webhook endpoint to log Vapi events."""
+    # Log the entire event data
+    event_data = request.get_json()
+    print("-------------------------------------------------")
+    print(f"Received Vapi event: {event_data}")
+
+    # Handle specific event types
+    message = event_data.get('message', event_data)  # Fallback to event_data if message is not present
+    event_type = message.get('type')
+
+    if event_type == 'status-update':
+        status = message.get('status')
+        if status == 'ended':
+            call_details = message.get('call')
+            ended_reason = message.get('endedReason')
+            print(f"Call ended: {call_details} due to {ended_reason}")
+    elif event_type == 'end-of-call-report':
+        call_details = message.get('call')
+        analysis = message.get('analysis', {})
+        guest_id = call_details.get('metadata', {}).get('guestId')
+        event_id = call_details.get('metadata', {}).get('eventId')
+        # Create a response object that matches the expected structure for log_rsvp
+        class Response:
+            def __init__(self, summary, structured_data):
+                self.summary = summary
+                self.structuredData = structured_data
+
+        response = Response(
+            summary=analysis.get('summary', ''),
+            structured_data=analysis.get('structuredData', {})
+        )
+        print(f"Call Report: {analysis}")
+        print(f"Structured Data: {response.structuredData}")
+        # Log RSVP to Airtable
+        if guest_id and event_id and response:
+            airtable_client.log_rsvp(guest_id, event_id, response)
+            airtable_client.update_guest_call_status(guest_id, "Called - RSVP Received")
+            print(f"RSVP logged for guest {guest_id} and event {event_id}")
+        else:
+            print("Missing guest_id, event_id, or response data in end-of-call-report")
+
+    return jsonify({'status': 'Event received'}), 200
 
 if __name__ == '__main__':
     app.run(debug=config.DEBUG, port=5000)

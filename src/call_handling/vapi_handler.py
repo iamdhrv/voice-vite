@@ -6,20 +6,21 @@ Handles Vapi outbound calls using direct API requests instead of the Vapi SDK.
 import requests
 import json
 from typing import Dict, Optional
+from datetime import datetime, timedelta
 
 class VapiHandler:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.base_url = "https://api.vapi.ai"
         self.headers = {
-            "Authorization": f"Bearer {api_key}"
-            # "Content-Type": "application/json"
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
         }
     
     def make_outbound_call(self, phone_number: str, assistant_id: str, guest_name: str, 
                           event_details: dict, guest_id_airtable: str) -> Optional[str]:
         """
-        Initiates an outbound call using the Vapi API.
+        Initiates an outbound call using the Vapi API with event variables and a custom first message.
         
         Args:
             phone_number: The phone number to call in E.164 format
@@ -35,7 +36,97 @@ class VapiHandler:
             The call ID if successful, None otherwise
         """
         try:
-            # Prepare the request payload
+            # Define the generic first message with placeholders for variables
+            first_message = (
+                "Hello, this is Rohan from VoiceVite, calling on behalf of {hostName}. "
+                "I’m here to invite you to a special event. May I speak with {guestName}, please?"
+            )
+
+            end_call_message = (
+                "Thank you for responding to VoiceVite, {guestName}. Your invitation to {hostName}’s {eventType} "
+                "on {eventDate} at {eventTime} is confirmed. We look forward to seeing you at {location}. Goodbye!"
+            )
+
+            # Format EventDate into a conversational format (e.g., "Sunday, May 25, 2025")
+            event_date_str = event_details.get("eventDate", "2025-05-15")
+            event_date = datetime.strptime(event_date_str, "%Y-%m-%d")
+            formatted_event_date = event_date.strftime("%A, %B %d, %Y")
+
+            # Format EventTime into a conversational format (e.g., "7:17 AM")
+            event_time_str = event_details.get("eventTime", "12:00")
+            event_time = datetime.strptime(event_time_str, "%H:%M")
+            formatted_event_time = event_time.strftime("%I:%M %p").lstrip("0")
+
+            # Derive ArrivalTime from SpecialInstructions or default to 15 minutes before EventTime
+            special_instructions = event_details.get("specialInstructions", "")
+            arrival_time = "15 minutes before the event"
+            if "arrive" in special_instructions.lower():
+                # Extract arrival instruction if present (e.g., "arrive 15 minutes early")
+                for part in special_instructions.lower().split():
+                    if part.isdigit():
+                        minutes = int(part)
+                        arrival_time = f"{minutes} minutes before the event"
+                        break
+            arrival_datetime = event_date.replace(
+                hour=event_time.hour, minute=event_time.minute
+            ) - timedelta(minutes=15)  # Default to 15 minutes early
+            formatted_arrival_time = arrival_time
+
+            # Derive DressCode from SpecialInstructions if available
+            dress_code = "not specified"
+            if "dress code" in special_instructions.lower():
+                dress_code_start = special_instructions.lower().find("dress code") + len("dress code")
+                dress_code = special_instructions[dress_code_start:].strip(" :.").split(";")[0].strip()
+
+            # Calculate AlternateDate and AlternateTime (e.g., 1 day later)
+            alternate_date = event_date + timedelta(days=1)
+            formatted_alternate_date = alternate_date.strftime("%A, %B %d, %Y")
+            formatted_alternate_time = formatted_event_time  # Same time as original
+
+            # Map event details to prompt placeholders
+            variable_values = {
+                "[HostName]": event_details.get("hostName", "the host"),
+                "[GuestName]": guest_name,
+                "[EventType]": event_details.get("eventType", "an event"),
+                "[EventDate]": formatted_event_date,
+                "[EventTime]": formatted_event_time,
+                "[Location]": event_details.get("location", "a location"),
+                "[CulturalPreferences]": event_details.get("culturalPreferences", ""),
+                "[SpecialInstructions]": special_instructions,
+                "[Duration]": event_details.get("duration", "a few hours"),
+                "[RSVPDeadline]": event_details.get("rsvpDeadline", "soon"),
+                "[ArrivalTime]": formatted_arrival_time,
+                "[DressCode]": dress_code,
+                "[AlternateDate]": formatted_alternate_date,
+                "[AlternateTime]": formatted_alternate_time
+            }
+
+            # Format the first message with the variables
+            formatted_first_message = first_message.format(
+                hostName=variable_values["[HostName]"],
+                guestName=variable_values["[GuestName]"]
+            )
+
+            # Format the end-of-call message with the variables
+            formatted_end_call_message = end_call_message.format(
+                guestName=variable_values["[GuestName]"],
+                hostName=variable_values["[HostName]"],
+                eventType=variable_values["[EventType]"],
+                eventDate=variable_values["[EventDate]"],
+                eventTime=variable_values["[EventTime]"],
+                location=variable_values["[Location]"]
+            )
+
+            # Load the prompt from VoiceAssitantPrompt.md
+            with open("src/voice_config/VoiceAssitantPrompt.md", "r") as file:
+                prompt_template = file.read()
+
+            # Replace placeholders in the prompt with variable values
+            formatted_prompt = prompt_template
+            for placeholder, value in variable_values.items():
+                formatted_prompt = formatted_prompt.replace(placeholder, value)
+
+            # Prepare the request payload with assistantOverrides
             payload = {
                 "name": f"{guest_name} Invitation call",
                 "assistantId": assistant_id,
@@ -46,16 +137,31 @@ class VapiHandler:
                         "number": phone_number,
                         "name": guest_name
                     }
-                ]
-                # "metadata": {
-                #     "guestId": guest_id_airtable,
-                #     "eventId": event_details.get("eventId"),
-                #     "voiceSampleId": event_details.get("voiceSampleId")
-                # }
+                ],
+                "assistantOverrides": {
+                    "firstMessage": formatted_first_message,
+                    "endCallMessage": formatted_end_call_message,
+                    "model": {
+                        "provider": "openai",
+                        "model": "chatgpt-4o-latest",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": formatted_prompt
+                            }
+                        ]
+                    }
+                },
+                "metadata": {
+                    "guestId": guest_id_airtable,
+                    "eventId": event_details.get("eventId"),
+                    "voiceSampleId": event_details.get("voiceSampleId")
+                }
             }
 
+            print(f"Formatted First Message: {formatted_first_message}")
             print(f"Vapi API Key: {self.api_key}")
-            print(f"Making outbound call to {phone_number} with payload: {payload}")
+            print(f"Making outbound call to {phone_number} with payload: {json.dumps(payload, indent=2)}")
             
             # Make the API request
             response = requests.post(
@@ -83,4 +189,7 @@ class VapiHandler:
             return None
         except (KeyError, json.JSONDecodeError) as e:
             print(f"Error parsing API response for call to {phone_number}: {e}")
+            return None
+        except FileNotFoundError as e:
+            print(f"Error loading prompt file: {e}")
             return None
