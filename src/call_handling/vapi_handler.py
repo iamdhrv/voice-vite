@@ -18,7 +18,7 @@ class VapiHandler:
         }
     
     def make_outbound_call(self, phone_number: str, assistant_id: str, guest_name: str, 
-                          event_details: dict, guest_id_airtable: str) -> Optional[str]:
+                          event_details: dict, guest_id_airtable: str, voice_choice: str = 'male') -> Optional[str]:
         """
         Initiates an outbound call using the Vapi API with event variables and a custom first message.
         
@@ -28,6 +28,7 @@ class VapiHandler:
             guest_name: The name of the guest being called
             event_details: Dictionary containing event information
             guest_id_airtable: The Airtable ID of the guest
+            voice_choice: The voice type ('male', 'female', or 'custom')
             
         Note:
             Uses a fixed phone number ID (bbb6faa5-8983-4411-b7a1-cd4f159fc4ae) for outbound calls
@@ -126,6 +127,21 @@ class VapiHandler:
             for placeholder, value in variable_values.items():
                 formatted_prompt = formatted_prompt.replace(placeholder, value)
 
+            # Set voice configuration based on voice choice
+            voice_config = {}
+            if voice_choice == 'custom':
+                voice_config = {
+                    "provider": "lmnt",
+                    "voiceId": event_details.get("voiceSampleId", "")
+                }
+            else:
+                voice_id = "JBFqnCBsd6RMkjVDRZzb" if voice_choice == 'male' else "XrExE9yKIg1WjnnlVkGX"
+                voice_config = {
+                    "provider": "11labs",
+                    "voiceId": voice_id,
+                    "model": "eleven_multilingual_v2"
+                }
+            
             # Prepare the request payload with assistantOverrides
             payload = {
                 "name": f"{guest_name} Invitation call",
@@ -150,7 +166,8 @@ class VapiHandler:
                                 "content": formatted_prompt
                             }
                         ]
-                    }
+                    },
+                    "voice": voice_config
                 },
                 "metadata": {
                     "guestId": guest_id_airtable,

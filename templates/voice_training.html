@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceVite - Voice Training</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .recording-visual {
+            display: none;
+            width: 100%;
+            background: #f0f0f0;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .waveform {
+            width: 100%;
+            height: 50px;
+            position: relative;
+        }
+        .waveform canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 3px;
+        }
+        .timer-container {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #333;
+            text-align: center;
+        }
+        .recorded-audio {
+            display: none;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .recorded-audio audio {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .processing {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .processing-message {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            color: #333;
+        }
+        .form-actions {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>VoiceVite</h1>
+            <div class="progress-bar">
+                <div class="progress-step completed">1</div>
+                <div class="progress-step active">2</div>
+                <div class="progress-step">3</div>
+            </div>
+        </header>
+        <main>
+            <h2>Provide Your Voice Sample</h2>
+            <p class="subtitle">We need a voice sample to personalize your invitations. Either upload an audio file or record your voice (minimum 15 seconds).</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flash-messages">
+                        {% for category, message in messages %}
+                            <li class="flash-{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('voice_training') }}" enctype="multipart/form-data" id="voiceForm">
+                <div class="form-group">
+                    <label>Text to Read:</label>
+                    <p class="voice-text" id="voiceText">
+                        Hello, welcome to VoiceVite! We are delighted to have you here for this special recording session. I’m excited to invite you to a wonderful event happening very soon. Please join us for a memorable celebration filled with joy, laughter, and great company. This event promises to be an unforgettable experience, and we truly hope you can make it. Let us know if you’ll be able to attend this special occasion with us!
+                    </p>
+                    <button type="button" class="btn btn-secondary" onclick="randomizeVoiceText()">Randomize Text</button>
+                </div>
+                <div class="form-group">
+                    <label>Option 1: Upload Voice Sample</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="audio" name="audio" accept=".wav,.mp3,.mp4,.m4a,.webm">
+                        <span class="file-input-text">Upload an audio file (min 15 seconds, max 250MB)</span>
+                        <span class="file-name-display" id="audio-file-name"></span>
+                    </div>
+                    <small>Supported formats: WAV, MP3, MP4, M4A, WEBM</small>
+                </div>
+                <div class="form-group">
+                    <label>Option 2: Record Your Voice</label>
+                    <div>
+                        <button type="button" class="btn btn-primary" id="startRecording">Start Recording</button>
+                        <button type="button" class="btn btn-danger" id="stopRecording" style="display: none;">Stop Recording</button>
+                        <span id="recordingStatus" style="margin-left: 10px;"></span>
+                    </div>
+                    <div class="recording-visual" id="recordingVisual">
+                        <div class="waveform">
+                            <canvas id="waveformCanvas"></canvas>
+                        </div>
+                        <div class="timer-container">
+                            <span id="recordingTimer">00:00</span>
+                        </div>
+                    </div>
+                    <div class="recorded-audio" id="recordedAudio">
+                        <audio controls id="audioPlayback"></audio>
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-danger" onclick="deleteRecording()">Delete</button>
+                            <button type="button" class="btn btn-primary" onclick="reRecord()">Re-record</button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="audio_blob" id="audioBlob">
+                </div>
+                <div class="form-actions">
+                    <a href="{{ url_for('voice_selection') }}" class="btn btn-secondary">Back</a>
+                    <button type="submit" class="btn btn-primary" id="submitButton">Next</button>
+                </div>
+            </form>
+            <div class="processing" id="processingOverlay">
+                <div class="processing-message">Processing...</div>
+            </div>
+        </main>
+    </div>
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordingStartTime;
+        let isRecording = false;
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let timerInterval;
+        const minDuration = 15; // Minimum 15 seconds
+        let recordedBlob;
+
+        // Randomize voice text
+        function randomizeVoiceText() {
+            const texts = [
+                "Hello, welcome to VoiceVite! We are delighted to have you here for this special recording session. I’m excited to invite you to a wonderful event happening very soon. Please join us for a memorable celebration filled with joy, laughter, and great company. This event promises to be an unforgettable experience, and we truly hope you can make it. Let us know if you’ll be able to attend this special occasion with us!",
+                "Greetings from VoiceVite! We’re so thrilled to have you participate in this recording today. I’d like to personally invite you to an upcoming event that’s going to be absolutely amazing. Join us for a day filled with happiness, fun activities, and wonderful moments to share. We can’t wait to see you there, and we hope you’ll let us know if you can attend this fantastic gathering!",
+                "Hi there, this is a special message from VoiceVite! We’re excited to include your voice in our invitation process. I’m here to invite you to a spectacular event that’s coming up soon. It’ll be a fantastic occasion with lots of laughter, joy, and memorable experiences to enjoy together. We’d love for you to be a part of it, so please let us know if you can make it to this wonderful celebration!"
+            ];
+            const randomText = texts[Math.floor(Math.random() * texts.length)];
+            document.getElementById('voiceText').textContent = randomText;
+        }
+
+        // File upload validation
+        document.getElementById('audio').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const fileNameDisplay = document.getElementById('audio-file-name');
+            const recordedAudio = document.getElementById('recordedAudio');
+            if (file) {
+                fileNameDisplay.textContent = file.name;
+                const audio = new Audio(URL.createObjectURL(file));
+                audio.onloadedmetadata = function() {
+                    if (audio.duration < minDuration) {
+                        alert('Audio file must be at least 15 seconds long.');
+                        e.target.value = '';
+                        fileNameDisplay.textContent = '';
+                    }
+                };
+                // Disable recording if file is uploaded
+                document.getElementById('startRecording').disabled = true;
+                recordedAudio.style.display = 'none';
+                recordedBlob = null;
+            } else {
+                fileNameDisplay.textContent = '';
+                document.getElementById('startRecording').disabled = false;
+            }
+        });
+
+        // Recording functionality
+        document.getElementById('startRecording').addEventListener('click', async () => {
+            if (document.getElementById('audio').files.length > 0) {
+                alert('Please remove the uploaded file to record audio.');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.start();
+                isRecording = true;
+                recordingStartTime = Date.now();
+
+                // Set up audio context for waveform
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 2048;
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+
+                document.getElementById('startRecording').style.display = 'none';
+                document.getElementById('stopRecording').style.display = 'inline-block';
+                document.getElementById('recordingStatus').textContent = 'Recording...';
+                document.getElementById('recordingVisual').style.display = 'block';
+                document.getElementById('audio').disabled = true;
+
+                // Timer
+                timerInterval = setInterval(updateTimer, 1000);
+                updateTimer();
+
+                // Waveform visualization
+                const canvas = document.getElementById('waveformCanvas');
+                const canvasCtx = canvas.getContext('2d');
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+
+                function drawWaveform() {
+                    if (!isRecording) return;
+                    analyser.getByteTimeDomainData(dataArray);
+
+                    canvasCtx.fillStyle = '#f0f0f0';
+                    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                    canvasCtx.lineWidth = 2;
+                    canvasCtx.strokeStyle = '#4a90e2';
+                    canvasCtx.beginPath();
+
+                    const sliceWidth = canvas.width / bufferLength;
+                    let x = 0;
+
+                    for (let i = 0; i < bufferLength; i++) {
+                        const v = dataArray[i] / 128.0;
+                        const y = (v * canvas.height) / 2;
+
+                        if (i === 0) {
+                            canvasCtx.moveTo(x, y);
+                        } else {
+                            canvasCtx.lineTo(x, y);
+                        }
+
+                        x += sliceWidth;
+                    }
+
+                    canvasCtx.lineTo(canvas.width, canvas.height / 2);
+                    canvasCtx.stroke();
+                    requestAnimationFrame(drawWaveform);
+                }
+
+                drawWaveform();
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    recordedBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(recordedBlob);
+                    const audioPlayback = document.getElementById('audioPlayback');
+                    audioPlayback.src = audioUrl;
+
+                    // Force metadata load to ensure duration is available
+                    audioPlayback.preload = 'metadata';
+                    audioPlayback.load();
+
+                    document.getElementById('recordedAudio').style.display = 'block';
+                    document.getElementById('recordingVisual').style.display = 'none';
+                    document.getElementById('recordingStatus').textContent = '';
+                    clearInterval(timerInterval);
+                    audioContext.close();
+                };
+            } catch (err) {
+                alert('Error accessing microphone: ' + err.message);
+                resetRecordingUI();
+            }
+        });
+
+        document.getElementById('stopRecording').addEventListener('click', () => {
+            const elapsed = (Date.now() - recordingStartTime) / 1000;
+            if (elapsed < minDuration) {
+                alert('Recording must be at least 15 seconds long.');
+                resetRecordingUI();
+                return;
+            }
+
+            mediaRecorder.stop();
+            isRecording = false;
+            document.getElementById('startRecording').style.display = 'inline-block';
+            document.getElementById('stopRecording').style.display = 'none';
+            document.getElementById('audio').disabled = false;
+        });
+
+        function updateTimer() {
+            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+            const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const seconds = String(elapsed % 60).padStart(2, '0');
+            document.getElementById('recordingTimer').textContent = `${minutes}:${seconds}`;
+        }
+
+        function deleteRecording() {
+            document.getElementById('recordedAudio').style.display = 'none';
+            document.getElementById('audioPlayback').src = '';
+            recordedBlob = null;
+            document.getElementById('audio').disabled = false;
+            document.getElementById('startRecording').disabled = false;
+        }
+
+        function reRecord() {
+            deleteRecording();
+            document.getElementById('startRecording').click();
+        }
+
+        function resetRecordingUI() {
+            isRecording = false;
+            document.getElementById('startRecording').style.display = 'inline-block';
+            document.getElementById('stopRecording').style.display = 'none';
+            document.getElementById('recordingStatus').textContent = '';
+            document.getElementById('recordingVisual').style.display = 'none';
+            document.getElementById('recordingTimer').textContent = '00:00';
+            document.getElementById('audio').disabled = false;
+            clearInterval(timerInterval);
+            if (audioContext) audioContext.close();
+        }
+
+        // Form submission handling
+        document.getElementById('voiceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const hasUpload = document.getElementById('audio').files.length > 0;
+            const hasRecording = recordedBlob !== null;
+
+            if (!hasUpload && !hasRecording) {
+                alert('Please either upload an audio file or record your voice.');
+                return;
+            }
+
+            // Show processing overlay
+            const processingOverlay = document.getElementById('processingOverlay');
+            processingOverlay.style.display = 'flex';
+            document.getElementById('submitButton').disabled = true;
+
+            const formData = new FormData(this);
+
+            // If there's a recording, append it as a file
+            if (hasRecording) {
+                formData.delete('audio_blob'); // Remove the hidden input
+                formData.append('audio_blob', recordedBlob, 'recording.wav');
+            }
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    // Redirect to the next page (handled by Flask)
+                    window.location.href = response.url;
+                } else {
+                    const errorText = await response.text();
+                    alert('Error submitting form: ' + errorText);
+                    processingOverlay.style.display = 'none';
+                    document.getElementById('submitButton').disabled = false;
+                }
+            } catch (err) {
+                alert('Error submitting form: ' + err.message);
+                processingOverlay.style.display = 'none';
+                document.getElementById('submitButton').disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

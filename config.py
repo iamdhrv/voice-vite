@@ -21,6 +21,7 @@ class Config:
     ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
     AIRTABLE_PERSONAL_ACCESS_TOKEN = os.getenv('AIRTABLE_PERSONAL_ACCESS_TOKEN')
     GROK_API_KEY = os.getenv('GROK_API_KEY') # Or your preferred LLM API key
+    LMNT_API_KEY = os.getenv('LMNT_API_KEY')
 
     # Airtable Configuration
     AIRTABLE_BASE_ID = os.getenv('AIRTABLE_BASE_ID')
@@ -44,6 +45,8 @@ class Config:
         print("Warning: ELEVENLABS_API_KEY is not set. ElevenLabs integration will not work.")
     if not AIRTABLE_PERSONAL_ACCESS_TOKEN or not AIRTABLE_BASE_ID:
         print("Warning: AIRTABLE_PERSONAL_ACCESS_TOKEN or AIRTABLE_BASE_ID is not set. Airtable integration will not work.")
+    if not LMNT_API_KEY:
+        print("Warning: LMNT_API_KEY is not set. LMNT voice cloning integration will not work.")
 
 # Create an instance of the config
 config = Config()

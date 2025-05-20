@@ -4,16 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VoiceVite - Success</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>Success!</h1>
-        <p class="form-group">
-            Your event (ID: {{ event_id }}) has been created successfully. Invitations are being sent to your guests.
-        </p>
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Create Another Event</a>
+    <div class="container success-container">
+        <header>
+            <h1>VoiceVite</h1>
+        </header>
+        <main>
+            <div class="success-message">
+                <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+                <h2>Success!</h2>
+                <p>Your event (ID: {{ event_id }}) has been created successfully. Invitations are being sent to your guests.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Create Another Event</a>
+            </div>
+        </main>
     </div>
 </body>
 </html>

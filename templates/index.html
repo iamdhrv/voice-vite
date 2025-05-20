@@ -3,32 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceVite - Create Event Invitation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>VoiceVite - Event Details (Step 1)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container" id="voicevite-container">
-        <h1>VoiceVite</h1>
-
-        <div id="voice-training-section">
-            <h2>Step 1: Train Your Voice</h2>
-            <p class="form-group">
-                We need a 30-second voice sample to personalize your invitations. Read the text below aloud and record your voice.
-            </p>
-            <div class="form-group">
-                <label for="voice-prompt">Text to Read:</label>
-                <p id="voice-prompt" class="border p-4 bg-gray-100 rounded">
-                    Hello, this is a test recording for VoiceVite. I’m excited to invite you to a special event happening soon. Please join us for a memorable celebration filled with joy and laughter. Let us know if you can make it!
-                </p>
+    <div class="container">
+        <header>
+            <h1>VoiceVite</h1>
+            <div class="progress-bar">
+                <div class="progress-step active">1</div>
+                <div class="progress-step">2</div>
+                <div class="progress-step">3</div>
             </div>
-            <button id="start-recording" class="btn btn-primary" onclick="startRecording()">Start Recording</button>
-            <button id="stop-recording" class="btn btn-secondary hidden" onclick="stopRecording()">Stop Recording</button>
-            <p id="voice-training-status" class="form-group text-gray-600 hidden"></p>
-        </div>
-
-        <form id="event-form" method="POST" enctype="multipart/form-data" class="hidden">
-            <h2>Step 2: Event Details</h2>
+        </header>
+        <main>
+            <h2>Step 1: Event Details (Part 1)</h2>
+            <p class="subtitle">Tell us about your event to create personalized invitations.</p>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -40,251 +31,49 @@
                 {% endif %}
             {% endwith %}
 
-            <div class="form-group">
-                <label for="host_name">HostName</label>
-                <input type="text" id="host_name" name="host_name" placeholder="e.g., Priya Sharma" required>
-            </div>
-
-            <div class="form-group">
-                <label for="event_type">EventType</label>
-                <select id="event_type" name="event_type" required>
-                    <option value="" disabled selected>Select event type</option>
-                    <option value="Wedding">Wedding</option>
-                    <option value="Birthday">Birthday</option>
-                    <option value="Anniversary">Anniversary</option>
-                    <option value="Corporate">Corporate</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="event_date">EventDate</label>
-                <input type="date" id="event_date" name="event_date" min="2025-05-15" required>
-            </div>
-
-            <div class="form-group">
-                <label for="event_time">EventTime</label>
-                <input type="time" id="event_time" name="event_time" required>
-                <p class="text-sm text-gray-500">Use 24-hour format (e.g., 07:17 for 7:17 AM).</p>
-            </div>
-
-            <div class="form-group">
-                <label for="duration">Duration</label>
-                <select id="duration" name="duration" required>
-                    <option value="" disabled selected>Select duration</option>
-                    <option value="1 hour">1 hour</option>
-                    <option value="2 hours">2 hours</option>
-                    <option value="3 hours">3 hours</option>
-                    <option value="4 hours">4 hours</option>
-                    <option value="5 hours">5 hours</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="location">Location</label>
-                <input type="text" id="location" name="location" placeholder="e.g., Mumbai, India" required>
-            </div>
-
-            <div class="form-group">
-                <label for="email">UserEmail</label>
-                <input type="email" id="email" name="email" placeholder="e.g., user@example.com" required>
-            </div>
-
-            <div class="form-group">
-                <label for="cultural_prefs">CulturalPreferences (Optional)</label>
-                <textarea id="cultural_prefs" name="cultural_prefs" placeholder="e.g., Indian, Bollywood-themed"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="special_instructions">SpecialInstructions (Optional)</label>
-                <textarea id="special_instructions" name="special_instructions" placeholder="e.g., Dress code is traditional attire; arrive 15 minutes early"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="rsvp_deadline">RSVPDeadline</label>
-                <input type="date" id="rsvp_deadline" name="rsvp_deadline" min="2025-05-15" required>
-                <p class="text-sm text-gray-500">Must be before the event date.</p>
-            </div>
-
-            <div class="form-group">
-                <label>Guest Input Method</label>
-                <div class="radio-group">
-                    <label class="radio-option">
-                        <input type="radio" id="single-number" name="guest_input_method" value="single" checked>
-                        <span class="radio-custom"></span>
-                        Single Phone Number
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" id="csv-upload" name="guest_input_method" value="csv">
-                        <span class="radio-custom"></span>
-                        Upload CSV Guest List
-                    </label>
+            <form method="POST" action="{{ url_for('index') }}" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="host_name">Host Name <span class="required">*</span></label>
+                        <input type="text" id="host_name" name="host_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="event_type">Event Type <span class="required">*</span></label>
+                        <select id="event_type" name="event_type" required>
+                            <option value="" disabled selected>Select event type</option>
+                            <option value="Wedding">Wedding</option>
+                            <option value="Birthday">Birthday</option>
+                            <option value="Anniversary">Anniversary</option>
+                            <option value="Corporate">Corporate</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="event_date">Event Date <span class="required">*</span></label>
+                        <input type="date" id="event_date" name="event_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="event_time">Event Time <span class="required">*</span></label>
+                        <input type="time" id="event_time" name="event_time" required>
+                        <small>Use 24-hour format (e.g., 07:17 for 7:17 AM).</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="duration">Duration <span class="required">*</span></label>
+                        <select id="duration" name="duration" required>
+                            <option value="" disabled selected>Select duration</option>
+                            <option value="1 hour">1 hour</option>
+                            <option value="2 hours">2 hours</option>
+                            <option value="3 hours">3 hours</option>
+                            <option value="4 hours">4 hours</option>
+                            <option value="5 hours">5 hours</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
-
-            <div id="single-number-section" class="form-group">
-                <label for="guest_name">Guest Name</label>
-                <input type="text" id="guest_name" name="guest_name" placeholder="e.g., John Smith" required>
-                
-                <label for="guest_phone" class="mt-3">Guest Phone Number</label>
-                <input type="tel" id="guest_phone" name="guest_phone" placeholder="+919876543210" pattern="\+[1-9][0-9]{1,14}">
-                <p class="text-sm text-gray-500">Use E.164 format (e.g., +919876543210).</p>
-            </div>
-
-            <div id="csv-upload-section" class="form-group hidden">
-                <label for="guest_list">GuestListCSVPath</label>
-                <div class="file-input-wrapper">
-                    <input type="file" id="guest_list" name="guest_list" accept=".csv" onchange="displayFileName(this)">
-                    <span class="file-input-text">Drag & drop a CSV file or click to upload</span>
-                    <div class="file-name-display"></div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Next</button>
                 </div>
-                <p class="text-sm text-gray-500">Format: Name,Phone (e.g., Priya Sharma,+919876543210)</p>
-            </div>
-
-            <input type="hidden" id="voice_sample_id" name="voice_sample_id" value="">
-
-            <button type="submit" class="btn btn-primary">Create Invitation</button>
-        </form>
+            </form>
+        </main>
     </div>
-
-    <script>
-        let mediaRecorder;
-        let audioChunks = [];
-        let voiceTrainingCompleted = false;
-
-        async function startRecording() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    audioChunks = [];
-                    sendAudioToBackend(audioBlob);
-                };
-
-                mediaRecorder.start();
-                document.getElementById('start-recording').classList.add('hidden');
-                document.getElementById('stop-recording').classList.remove('hidden');
-                document.getElementById('voice-training-status').classList.remove('hidden');
-                document.getElementById('voice-training-status').textContent = 'Recording... Speak the text above for 30 seconds, then stop.';
-            } catch (error) {
-                console.error('Error accessing microphone:', error);
-                document.getElementById('voice-training-status').classList.remove('hidden');
-                document.getElementById('voice-training-status').textContent = 'Error accessing microphone. Please allow microphone access and try again.';
-            }
-        }
-
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                document.getElementById('stop-recording').classList.add('hidden');
-                document.getElementById('start-recording').classList.remove('hidden');
-                document.getElementById('voice-training-status').textContent = 'Processing your voice sample...';
-            }
-        }
-
-        function sendAudioToBackend(audioBlob) {
-            const formData = new FormData();
-            formData.append('audio', audioBlob, 'voice_sample.wav');
-
-            fetch('/voice-training', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
-                    const status = document.getElementById('voice-training-status');
-                    if (data.status === 'success') {
-                        voiceTrainingCompleted = true;
-                        document.getElementById('voice_sample_id').value = data.voice_sample_id;
-                        status.textContent = 'Voice training completed successfully! Your voice has been cloned.';
-                        document.getElementById('voice-training-section').classList.add('bg-green-100');
-                        document.getElementById('event-form').classList.remove('hidden');
-                    } else {
-                        status.textContent = 'Error processing voice sample: ' + data.message;
-                        document.getElementById('start-recording').disabled = false;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error uploading audio:', error);
-                    document.getElementById('voice-training-status').textContent = 'Error uploading audio. Please try again.';
-                    document.getElementById('start-recording').disabled = false;
-                });
-        }
-
-        function toggleGuestInput() {
-            const singleSection = document.getElementById('single-number-section');
-            const csvSection = document.getElementById('csv-upload-section');
-            const method = document.querySelector('input[name="guest_input_method"]:checked').value;
-
-            if (method === 'single') {
-                singleSection.classList.remove('hidden');
-                csvSection.classList.add('hidden');
-                document.getElementById('guest_name').required = true;
-                document.getElementById('guest_phone').required = true;
-                document.getElementById('guest_list').required = false;
-            } else if (method === 'csv') {
-                singleSection.classList.add('hidden');
-                csvSection.classList.remove('hidden');
-                document.getElementById('guest_name').required = false;
-                document.getElementById('guest_phone').required = false;
-                document.getElementById('guest_list').required = true;
-            }
-        }
-
-        function displayFileName(input) {
-            const fileNameDisplay = input.parentElement.querySelector('.file-name-display');
-            fileNameDisplay.textContent = input.files.length > 0 ? input.files[0].name : '';
-            const file = input.files[0];
-            if (file) {
-                const fileType = file.name.split('.').pop().toLowerCase();
-                const maxSize = 5 * 1024 * 1024; // 5MB
-                if (fileType !== 'csv') {
-                    alert('Please upload a CSV file.');
-                    input.value = '';
-                    fileNameDisplay.textContent = '';
-                } else if (file.size > maxSize) {
-                    alert('File size must be under 5MB.');
-                    input.value = '';
-                    fileNameDisplay.textContent = '';
-                }
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const radioButtons = document.querySelectorAll('input[name="guest_input_method"]');
-            radioButtons.forEach(button => {
-                button.addEventListener('change', toggleGuestInput);
-            });
-
-            toggleGuestInput();
-
-            const eventDateInput = document.getElementById('event_date');
-            const rsvpDeadlineInput = document.getElementById('rsvp_deadline');
-
-            eventDateInput.addEventListener('change', () => {
-                const eventDate = new Date(eventDateInput.value);
-                const rsvpDate = rsvpDeadlineInput.value ? new Date(rsvpDeadlineInput.value) : null;
-                if (rsvpDate && rsvpDate >= eventDate) {
-                    alert('RSVPDeadline must be before the EventDate.');
-                    rsvpDeadlineInput.value = '';
-                }
-            });
-
-            rsvpDeadlineInput.addEventListener('change', () => {
-                const eventDate = new Date(eventDateInput.value);
-                const rsvpDate = new Date(rsvpDeadlineInput.value);
-                if (eventDate && rsvpDate >= eventDate) {
-                    alert('RSVPDeadline must be before the EventDate.');
-                    rsvpDeadlineInput.value = '';
-                }
-            });
-        });
-    </script>
 </body>
 </html>

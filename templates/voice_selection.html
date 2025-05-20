@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceVite - Select Voice (Step 2)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>VoiceVite</h1>
+            <div class="progress-bar">
+                <div class="progress-step completed">1</div>
+                <div class="progress-step active">2</div>
+                <div class="progress-step">3</div>
+            </div>
+        </header>
+        <main>
+            <h2>Step 2: Select Your Voice</h2>
+            <p class="subtitle">Choose a voice for your invitation calls. You can select a pre-made voice or provide your own.</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flash-messages">
+                        {% for category, message in messages %}
+                            <li class="flash-{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('voice_selection') }}">
+                <div class="form-group">
+                    <label>Select Voice</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="voice_choice" value="male" required>
+                            <span class="radio-custom"></span>
+                            Male Voice
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="voice_choice" value="female">
+                            <span class="radio-custom"></span>
+                            Female Voice
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="voice_choice" value="custom">
+                            <span class="radio-custom"></span>
+                            Custom Voice (Provide Your Own)
+                        </label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back</a>
+                    <button type="submit" class="btn btn-primary">Next</button>
+                </div>
+            </form>
+        </main>
+    </div>
+</body>
+</html>
