@@ -5,148 +5,193 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VoiceVite - Voice Training</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        .recording-visual {
-            display: none;
-            width: 100%;
-            background: #f0f0f0;
-            border-radius: 5px;
-            padding: 10px;
-            margin-top: 10px;
+        /* Embedded styles specific to this page */
+        .voice-card {
+            box-shadow: 0 2px 16px 0 #6366f122; border: 3px solid transparent;
+            border-radius: 1rem !important; transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
+            min-height: 120px !important; height: auto !important; display: flex;
+            flex-direction: column; align-items: center; justify-content: center;
+            padding: 1rem !important; cursor: pointer; background-color: #fff; flex-grow: 1;
         }
-        .waveform {
-            width: 100%;
-            height: 50px;
-            position: relative;
+        .voice-card-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; text-align: center; }
+        .selectable-card.selected, .selectable-card:focus-within, .selectable-card:focus {
+            border-color: #6366f1; background: linear-gradient(90deg, #f0f4ff 0%, #e0e7ff 100%);
+            box-shadow: 0 4px 32px 0 #6366f144;
         }
-        .waveform canvas {
-            width: 100%;
-            height: 100%;
-            border-radius: 3px;
+        .selectable-card:hover { border-color: #60a5fa; background: #f8fafc; }
+        .visually-hidden {
+            position: absolute !important; width: 1px !important; height: 1px !important;
+            padding: 0 !important; margin: -1px !important; overflow: hidden !important;
+            clip: rect(0,0,0,0) !important; border: 0 !important;
         }
-        .timer-container {
-            margin-top: 5px;
-            font-size: 14px;
-            color: #333;
-            text-align: center;
+        .recording-visual, .recorded-audio { margin-top: 1rem; }
+        .waveform canvas { border-radius: .375rem; background-color: #e9ecef; }
+        .timer-container { margin-top: 0.5rem; font-size: 0.9rem; color: #6c757d; text-align: center; }
+        .recorded-audio audio { width: 100%; margin-bottom: 0.75rem; }
+        .action-buttons { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem; }
+        .spinner {
+            display: none; width: 20px; height: 20px; border: 3px solid #f3f3f3;
+            border-top: 3px solid #6366f1; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-left: 8px;
         }
-        .recorded-audio {
-            display: none;
-            margin-top: 15px;
-            padding: 10px;
-            background: #f9f9f9;
-            border-radius: 5px;
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .voicevite-title { font-weight: 700; letter-spacing:-1px; font-size:2.5rem; color:#222; }
+        .step-title { font-weight: 600; font-size:1.35rem; color:#222; }
+        .btn-link { text-decoration: none; }
+        .btn-link:hover { text-decoration: underline; }
+
+        /* --- START: Specific styles for Bootstrap Progress Bar on this page --- */
+        div.progress.rounded-pill.w-75 {
+            height: 8px !important; background-color: #e9ecef !important;
+            padding: 0 !important; overflow: hidden !important;
+            margin-left: auto; margin-right: auto;
         }
-        .recorded-audio audio {
-            width: 100%;
-            margin-bottom: 10px;
+        div.progress.rounded-pill.w-75 > .progress-bar.bg-gradient {
+            display: flex !important; flex-direction: column !important;
+            justify-content: center !important; color: #fff !important;
+            text-align: center !important; white-space: nowrap !important;
+            background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%) !important;
+            margin: 0 !important; gap: 0 !important;
+            transition: width .6s ease !important;
         }
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        .processing {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        .processing-message {
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            font-size: 16px;
-            color: #333;
-        }
-        .form-actions {
-            position: relative;
-        }
+        /* --- END: Specific styles for Bootstrap Progress Bar --- */
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>VoiceVite</h1>
-            <div class="progress-bar">
-                <div class="progress-step completed">1</div>
-                <div class="progress-step active">2</div>
-                <div class="progress-step">3</div>
-            </div>
-        </header>
-        <main>
-            <h2>Provide Your Voice Sample</h2>
-            <p class="subtitle">We need a voice sample to personalize your invitations. Either upload an audio file or record your voice (minimum 15 seconds).</p>
+    <div class="shadow-lg rounded-4 bg-white p-5 mx-auto" style="max-width: 640px; width:100%; margin-top: 2rem; margin-bottom: 2rem;">
+            <header class="mb-4 text-center">
+                <h1 class="voicevite-title mb-2">VoiceVite</h1>
+                <div class="d-flex align-items-center justify-content-center mb-4">
+                    <div class="progress rounded-pill w-75">
+                        <div class="progress-bar bg-gradient" role="progressbar" style="width: 55%;"></div> </div>
+                </div>
+            </header>
+            <main>
+                <h2 class="step-title mb-2">Provide Your Voice Sample</h2>
+                <p class="subtitle mb-4">We need a voice sample to personalize your invitations. Either upload an audio file or record your voice (minimum 15 seconds).</p>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <ul class="flash-messages">
-                        {% for category, message in messages %}
-                            <li class="flash-{{ category }}">{{ message }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            {% endwith %}
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="mb-3">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} shadow-sm py-2 px-3 mb-2" style="font-size:1rem;">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
 
-            <form method="POST" action="{{ url_for('voice_training') }}" enctype="multipart/form-data" id="voiceForm">
-                <div class="form-group">
-                    <label>Text to Read:</label>
-                    <p class="voice-text" id="voiceText">
-                        Hello, welcome to VoiceVite! We are delighted to have you here for this special recording session. I’m excited to invite you to a wonderful event happening very soon. Please join us for a memorable celebration filled with joy, laughter, and great company. This event promises to be an unforgettable experience, and we truly hope you can make it. Let us know if you’ll be able to attend this special occasion with us!
-                    </p>
-                    <button type="button" class="btn btn-secondary" onclick="randomizeVoiceText()">Randomize Text</button>
-                </div>
-                <div class="form-group">
-                    <label>Option 1: Upload Voice Sample</label>
-                    <div class="file-input-wrapper">
-                        <input type="file" id="audio" name="audio" accept=".wav,.mp3,.mp4,.m4a,.webm">
-                        <span class="file-input-text">Upload an audio file (min 15 seconds, max 250MB)</span>
-                        <span class="file-name-display" id="audio-file-name"></span>
+                <form method="POST" action="{{ url_for('voice_training') }}" enctype="multipart/form-data" id="voiceForm">
+                    <div class="mb-3">
+                        <label class="form-label">Text to Read:</label>
+                        <p class="voice-text p-3 rounded-3" id="voiceText"> 
+                            Hello, welcome to VoiceVite! We are delighted to have you here for this special recording session. I’m excited to invite you to a wonderful event happening very soon. Please join us for a memorable celebration filled with joy, laughter, and great company. This event promises to be an unforgettable experience, and we truly hope you can make it. Let us know if you’ll be able to attend this special occasion with us!
+                        </p>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill mt-2" onclick="randomizeVoiceText()">Randomize Text</button>
                     </div>
-                    <small>Supported formats: WAV, MP3, MP4, M4A, WEBM</small>
-                </div>
-                <div class="form-group">
-                    <label>Option 2: Record Your Voice</label>
-                    <div>
-                        <button type="button" class="btn btn-primary" id="startRecording">Start Recording</button>
-                        <button type="button" class="btn btn-danger" id="stopRecording" style="display: none;">Stop Recording</button>
-                        <span id="recordingStatus" style="margin-left: 10px;"></span>
-                    </div>
-                    <div class="recording-visual" id="recordingVisual">
-                        <div class="waveform">
-                            <canvas id="waveformCanvas"></canvas>
-                        </div>
-                        <div class="timer-container">
-                            <span id="recordingTimer">00:00</span>
+
+                    <div class="mb-4">
+                        <label class="form-label d-block mb-2">Provide Your Voice Sample <span class="text-danger">*</span></label>
+                        <div class="d-flex flex-column flex-md-row gap-3 justify-content-center align-items-stretch">
+                             <label class="voice-card selectable-card" tabindex="0">
+                                <input type="radio" name="voice_input_method" value="upload" class="visually-hidden card-radio" onclick="toggleVoiceInput('upload')" checked autocomplete="off">
+                                <div class="voice-card-content">
+                                    <span class="fw-semibold fs-5 mb-1 text-primary text-center w-100">Upload Sample</span>
+                                    <span class="fs-6 text-secondary mb-1 text-center w-100" style="font-weight:400;">Min 15s, Max 250MB</span>
+                                </div>
+                            </label>
+                            <label class="voice-card selectable-card" tabindex="0">
+                                <input type="radio" name="voice_input_method" value="record" class="visually-hidden card-radio" onclick="toggleVoiceInput('record')" autocomplete="off">
+                                <div class="voice-card-content">
+                                    <span class="fw-semibold fs-5 mb-1 text-primary text-center w-100">Record Voice</span>
+                                    <span class="fs-6 text-secondary mb-1 text-center w-100" style="font-weight:400;">In browser, min 15s</span>
+                                </div>
+                            </label>
                         </div>
                     </div>
-                    <div class="recorded-audio" id="recordedAudio">
-                        <audio controls id="audioPlayback"></audio>
-                        <div class="action-buttons">
-                            <button type="button" class="btn btn-danger" onclick="deleteRecording()">Delete</button>
-                            <button type="button" class="btn btn-primary" onclick="reRecord()">Re-record</button>
+
+                    <div class="mb-3" id="uploadSection">
+                        <label for="audio" class="form-label">Upload Audio File:</label>
+                        <div class="file-input-wrapper" onclick="document.getElementById('audio').click();">
+                            <input type="file" id="audio" name="audio" accept=".wav,.mp3,.mp4,.m4a,.webm">
+                            <span class="file-input-text">Upload an audio file (min 15 seconds, max 250MB)</span>
                         </div>
+                        <span class="file-name-display d-block mt-1 text-muted" id="audio-file-name"></span>
+                        <small class="d-block mt-1">Supported formats: WAV, MP3, MP4, M4A, WEBM</small>
                     </div>
-                    <input type="hidden" name="audio_blob" id="audioBlob">
-                </div>
-                <div class="form-actions">
-                    <a href="{{ url_for('voice_selection') }}" class="btn btn-secondary">Back</a>
-                    <button type="submit" class="btn btn-primary" id="submitButton">Next</button>
-                </div>
-            </form>
-            <div class="processing" id="processingOverlay">
-                <div class="processing-message">Processing...</div>
-            </div>
-        </main>
+
+                    <div class="mb-3" id="recordSection" style="display: none;">
+                        <label class="form-label">Record Audio:</label>
+                        <div class="d-flex gap-2 mb-3"> 
+                            <button type="button" class="btn btn-primary btn-lg flex-grow-1" id="startRecording">Start Recording</button>
+                            <button type="button" class="btn btn-danger btn-lg flex-grow-1" id="stopRecording" style="display: none;">Stop Recording</button>
+                        </div>
+                        <div id="recordingStatus" class="text-center text-muted mb-2"></div>
+                        
+                        <div class="recording-visual border rounded-3 p-3 bg-light mb-3" id="recordingVisual">
+                            <div class="waveform mb-2">
+                                <canvas id="waveformCanvas" style="width:100%; height:50px;"></canvas>
+                            </div>
+                            <div class="timer-container">
+                                <span id="recordingTimer">00:00</span>
+                            </div>
+                        </div>
+                        <div class="recorded-audio border rounded-3 p-3 bg-light" id="recordedAudio" style="display:none;">
+                            <audio controls id="audioPlayback" class="w-100 mb-2"></audio>
+                            <div class="action-buttons">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRecording()">Delete</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="reRecord()">Re-record</button>
+                            </div>
+                        </div>
+                        <input type="hidden" name="audio_blob" id="audioBlobInput"> 
+                    </div>
+                
+                    <div style="height: 2.5rem;"></div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('voice_selection') }}" class="btn btn-link btn-lg px-4">Back</a>
+                        <button type="submit" class="btn btn-primary btn-lg rounded-3 px-5 shadow-sm d-flex align-items-center" style="background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%); border: none;" id="submitButton">
+                            Next
+                            <div class="spinner" id="submitSpinner"></div>
+                        </button>
+                    </div>
+                </form>
+            </main>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script>
+    // All JS from previous version of voice_training.html is assumed to be here and correct.
+    // For brevity, not repeating the full JS block if it hasn't changed from the one that handled
+    // form logic, audio recording, selectable cards, and async submission, including the audio duration fix attempt.
+    // Ensure the JS provided in the previous response for this file (with the audio duration handling) is used.
+    document.addEventListener('DOMContentLoaded', function() {
+        // Selectable cards for voice input method
+        document.querySelectorAll('.selectable-card').forEach(function(card) {
+            const radio = card.querySelector('input.card-radio');
+            if (!radio) return;
+
+            card.addEventListener('click', function(e) {
+                if (e.target === radio) return;
+                document.querySelectorAll('.selectable-card').forEach(c => c.classList.remove('selected'));
+                document.querySelectorAll('input.card-radio').forEach(r => r.checked = false);
+                
+                card.classList.add('selected');
+                radio.checked = true;
+                if (radio.onclick) radio.click();
+            });
+            card.addEventListener('keydown', function(e) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+            if (radio.checked) { // Initial selection
+                card.classList.add('selected');
+                if (radio.onclick) radio.click(); 
+            }
+        });
+
         let mediaRecorder;
         let audioChunks = [];
         let recordingStartTime;
@@ -154,12 +199,48 @@
         let audioContext;
         let analyser;
         let dataArray;
+        let animationFrameId;
         let timerInterval;
-        const minDuration = 15; // Minimum 15 seconds
-        let recordedBlob;
+        const minDuration = 15; 
+        let recordedBlob = null; 
 
-        // Randomize voice text
-        function randomizeVoiceText() {
+        const uploadSection = document.getElementById('uploadSection');
+        const recordSection = document.getElementById('recordSection');
+        const audioInput = document.getElementById('audio');
+        const startRecordingButton = document.getElementById('startRecording');
+        const stopRecordingButton = document.getElementById('stopRecording');
+        const recordingStatus = document.getElementById('recordingStatus');
+        const recordingVisual = document.getElementById('recordingVisual');
+        const waveformCanvas = document.getElementById('waveformCanvas');
+        const recordingTimer = document.getElementById('recordingTimer');
+        const recordedAudioSection = document.getElementById('recordedAudio');
+        const audioPlayback = document.getElementById('audioPlayback');
+        const audioBlobInput = document.getElementById('audioBlobInput');
+        const fileNameDisplay = document.getElementById('audio-file-name');
+        const voiceForm = document.getElementById('voiceForm');
+        const submitButton = document.getElementById('submitButton');
+        const submitSpinner = document.getElementById('submitSpinner');
+
+
+        window.toggleVoiceInput = function(method) {
+            if (method === 'upload') {
+                uploadSection.style.display = 'block';
+                recordSection.style.display = 'none';
+                if (audioInput) audioInput.disabled = false;
+                if (startRecordingButton) startRecordingButton.disabled = false; 
+                window.deleteRecording(); 
+            } else { // record method
+                uploadSection.style.display = 'none';
+                recordSection.style.display = 'block';
+                if (audioInput) {
+                    audioInput.disabled = true;
+                    audioInput.value = ''; 
+                }
+                if (fileNameDisplay) fileNameDisplay.textContent = '';
+            }
+        }
+
+        window.randomizeVoiceText = function() {
             const texts = [
                 "Hello, welcome to VoiceVite! We are delighted to have you here for this special recording session. I’m excited to invite you to a wonderful event happening very soon. Please join us for a memorable celebration filled with joy, laughter, and great company. This event promises to be an unforgettable experience, and we truly hope you can make it. Let us know if you’ll be able to attend this special occasion with us!",
                 "Greetings from VoiceVite! We’re so thrilled to have you participate in this recording today. I’d like to personally invite you to an upcoming event that’s going to be absolutely amazing. Join us for a day filled with happiness, fun activities, and wonderful moments to share. We can’t wait to see you there, and we hope you’ll let us know if you can attend this fantastic gathering!",
@@ -168,223 +249,356 @@
             const randomText = texts[Math.floor(Math.random() * texts.length)];
             document.getElementById('voiceText').textContent = randomText;
         }
-
-        // File upload validation
-        document.getElementById('audio').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const fileNameDisplay = document.getElementById('audio-file-name');
-            const recordedAudio = document.getElementById('recordedAudio');
-            if (file) {
-                fileNameDisplay.textContent = file.name;
-                const audio = new Audio(URL.createObjectURL(file));
-                audio.onloadedmetadata = function() {
-                    if (audio.duration < minDuration) {
-                        alert('Audio file must be at least 15 seconds long.');
-                        e.target.value = '';
-                        fileNameDisplay.textContent = '';
-                    }
-                };
-                // Disable recording if file is uploaded
-                document.getElementById('startRecording').disabled = true;
-                recordedAudio.style.display = 'none';
-                recordedBlob = null;
-            } else {
-                fileNameDisplay.textContent = '';
-                document.getElementById('startRecording').disabled = false;
-            }
-        });
-
-        // Recording functionality
-        document.getElementById('startRecording').addEventListener('click', async () => {
-            if (document.getElementById('audio').files.length > 0) {
-                alert('Please remove the uploaded file to record audio.');
-                return;
-            }
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                mediaRecorder.start();
-                isRecording = true;
-                recordingStartTime = Date.now();
-
-                // Set up audio context for waveform
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                const source = audioContext.createMediaStreamSource(stream);
-                source.connect(analyser);
-                analyser.fftSize = 2048;
-                const bufferLength = analyser.frequencyBinCount;
-                dataArray = new Uint8Array(bufferLength);
-
-                document.getElementById('startRecording').style.display = 'none';
-                document.getElementById('stopRecording').style.display = 'inline-block';
-                document.getElementById('recordingStatus').textContent = 'Recording...';
-                document.getElementById('recordingVisual').style.display = 'block';
-                document.getElementById('audio').disabled = true;
-
-                // Timer
-                timerInterval = setInterval(updateTimer, 1000);
-                updateTimer();
-
-                // Waveform visualization
-                const canvas = document.getElementById('waveformCanvas');
-                const canvasCtx = canvas.getContext('2d');
-                canvas.width = canvas.parentElement.clientWidth;
-                canvas.height = canvas.parentElement.clientHeight;
-
-                function drawWaveform() {
-                    if (!isRecording) return;
-                    analyser.getByteTimeDomainData(dataArray);
-
-                    canvasCtx.fillStyle = '#f0f0f0';
-                    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-                    canvasCtx.lineWidth = 2;
-                    canvasCtx.strokeStyle = '#4a90e2';
-                    canvasCtx.beginPath();
-
-                    const sliceWidth = canvas.width / bufferLength;
-                    let x = 0;
-
-                    for (let i = 0; i < bufferLength; i++) {
-                        const v = dataArray[i] / 128.0;
-                        const y = (v * canvas.height) / 2;
-
-                        if (i === 0) {
-                            canvasCtx.moveTo(x, y);
+        
+        if (audioInput) {
+            audioInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (fileNameDisplay) fileNameDisplay.textContent = file.name;
+                    const tempAudio = new Audio(URL.createObjectURL(file));
+                    tempAudio.onloadedmetadata = function() {
+                        if (tempAudio.duration < minDuration) {
+                            alert(`Audio file must be at least ${minDuration} seconds long.`);
+                            e.target.value = '';
+                            if (fileNameDisplay) fileNameDisplay.textContent = '';
                         } else {
-                            canvasCtx.lineTo(x, y);
+                            window.deleteRecording(); 
+                            if(startRecordingButton) startRecordingButton.disabled = true; 
+                        }
+                        URL.revokeObjectURL(tempAudio.src); 
+                    };
+                    tempAudio.onerror = function() {
+                        alert('Failed to load audio file metadata.');
+                        e.target.value = '';
+                        if (fileNameDisplay) fileNameDisplay.textContent = '';
+                        URL.revokeObjectURL(tempAudio.src);
+                    };
+                } else {
+                    if (fileNameDisplay) fileNameDisplay.textContent = '';
+                    if(startRecordingButton) startRecordingButton.disabled = false; 
+                }
+            });
+        }
+
+        if (startRecordingButton) {
+            startRecordingButton.addEventListener('click', async () => {
+                if (audioInput && audioInput.files.length > 0) {
+                    alert('Please clear the uploaded file to record new audio.');
+                    return;
+                }
+                window.deleteRecording(); 
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    const source = audioContext.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                    analyser.fftSize = 2048;
+                    const bufferLength = analyser.frequencyBinCount;
+                    dataArray = new Uint8Array(bufferLength);
+
+                    mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+                    
+                    mediaRecorder.onstop = () => {
+                        let blobType = (audioChunks.length > 0 && audioChunks[0].type && audioChunks[0].type !== '') ? audioChunks[0].type : 'audio/webm';
+                        console.log('Using blob type for recording:', blobType);
+                        recordedBlob = new Blob(audioChunks, { type: blobType });
+                        const audioUrl = URL.createObjectURL(recordedBlob);
+                        
+                        if (audioPlayback) {
+                            if (recordedAudioSection) recordedAudioSection.style.display = 'none'; // Hide till ready
+
+                            const processMetadataAndShowPlayer = () => {
+                                if (audioPlayback.duration && audioPlayback.duration > 0) {
+                                    console.log(`Recorded audio metadata processed. Actual Duration: ${audioPlayback.duration} seconds.`);
+                                    const prevTime = audioPlayback.currentTime;
+                                    audioPlayback.currentTime = 0.00001; 
+                                    audioPlayback.currentTime = prevTime;    
+                                    if (recordedAudioSection) recordedAudioSection.style.display = 'block';
+                                } else {
+                                    console.warn('Duration not available or zero after metadata/canplay event. Displaying section anyway.');
+                                    if (recordedAudioSection) recordedAudioSection.style.display = 'block';
+                                }
+                                audioPlayback.removeEventListener('loadedmetadata', processMetadataAndShowPlayer);
+                                audioPlayback.removeEventListener('canplay', processMetadataAndShowPlayer);
+                            };
+                            
+                            audioPlayback.addEventListener('loadedmetadata', processMetadataAndShowPlayer, { once: true });
+                            audioPlayback.addEventListener('canplay', processMetadataAndShowPlayer, { once: true });
+
+                            const onAudioError = (err_ev) => {
+                                console.error('Error with audio playback element:', err_ev);
+                                alert('Could not load the recorded audio for playback. Please try re-recording.');
+                                URL.revokeObjectURL(audioUrl); 
+                                audioPlayback.removeEventListener('error', onAudioError);
+                                audioPlayback.removeEventListener('loadedmetadata', processMetadataAndShowPlayer);
+                                audioPlayback.removeEventListener('canplay', processMetadataAndShowPlayer);
+                            };
+                            audioPlayback.addEventListener('error', onAudioError, { once: true });
+
+                            audioPlayback.src = audioUrl; 
+                            audioPlayback.load(); 
                         }
 
-                        x += sliceWidth;
-                    }
+                        if (recordingVisual) recordingVisual.style.display = 'none';
+                        if (recordingStatus) recordingStatus.textContent = 'Recording finished. Please review.';
+                        
+                        clearInterval(timerInterval);
+                        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                        
+                        if (mediaRecorder && mediaRecorder.stream) { // Stream tracks are stopped here
+                            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                        }
+                        if (audioContext && audioContext.state !== 'closed') {
+                            audioContext.close().catch(e => console.error("Error closing AudioContext:", e));
+                        }
+                        
+                        if(startRecordingButton) startRecordingButton.style.display = 'inline-block';
+                        if(stopRecordingButton) stopRecordingButton.style.display = 'none';
+                        if(audioInput) audioInput.disabled = false;
+                    };
 
-                    canvasCtx.lineTo(canvas.width, canvas.height / 2);
-                    canvasCtx.stroke();
-                    requestAnimationFrame(drawWaveform);
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    recordingStartTime = Date.now();
+
+                    startRecordingButton.style.display = 'none';
+                    if (stopRecordingButton) stopRecordingButton.style.display = 'inline-block';
+                    if (recordingStatus) recordingStatus.textContent = 'Recording...';
+                    if (recordingVisual) recordingVisual.style.display = 'block';
+                    if (audioInput) audioInput.disabled = true;
+
+                    timerInterval = setInterval(updateTimer, 1000);
+                    updateTimer();
+                    drawWaveform();
+
+                } catch (err) {
+                    alert('Error accessing microphone: ' + err.message);
+                    resetRecordingUI();
                 }
+            });
+        }
 
-                drawWaveform();
+        if (stopRecordingButton) {
+            stopRecordingButton.addEventListener('click', () => {
+                if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+                
+                const elapsed = (Date.now() - recordingStartTime) / 1000;
+                if (elapsed < minDuration) {
+                    alert(`Recording must be at least ${minDuration} seconds long. Current: ${Math.round(elapsed)}s`);
+                    // Abort recording without saving
+                    isRecording = false; 
+                    if (mediaRecorder && mediaRecorder.stream) {
+                        mediaRecorder.stream.getTracks().forEach(track => track.stop()); 
+                    }
+                    // Do not call mediaRecorder.stop() here to prevent onstop from processing an invalid blob
+                    resetRecordingUI(); 
+                    
+                    // Manually ensure button states are correct after abort
+                    if (startRecordingButton) startRecordingButton.style.display = 'inline-block';
+                    if (stopRecordingButton) stopRecordingButton.style.display = 'none';
+                    if (audioInput) audioInput.disabled = false;
+                    return;
+                }
+                
+                mediaRecorder.stop(); // This will trigger 'onstop'
+                // isRecording will be set to false inside onstop or by button logic
+                // UI updates for buttons are mostly handled in onstop now.
+            });
+        }
+        
+        function drawWaveform() {
+            if (!isRecording || !analyser || !waveformCanvas) return;
+            animationFrameId = requestAnimationFrame(drawWaveform);
+            analyser.getByteTimeDomainData(dataArray);
 
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
+            const canvasCtx = waveformCanvas.getContext('2d');
+            waveformCanvas.width = waveformCanvas.clientWidth; 
+            waveformCanvas.height = 50; 
 
-                mediaRecorder.onstop = () => {
-                    recordedBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    const audioUrl = URL.createObjectURL(recordedBlob);
-                    const audioPlayback = document.getElementById('audioPlayback');
-                    audioPlayback.src = audioUrl;
+            canvasCtx.fillStyle = '#e9ecef'; 
+            canvasCtx.fillRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = '#6366f1'; 
+            canvasCtx.beginPath();
 
-                    // Force metadata load to ensure duration is available
-                    audioPlayback.preload = 'metadata';
-                    audioPlayback.load();
-
-                    document.getElementById('recordedAudio').style.display = 'block';
-                    document.getElementById('recordingVisual').style.display = 'none';
-                    document.getElementById('recordingStatus').textContent = '';
-                    clearInterval(timerInterval);
-                    audioContext.close();
-                };
-            } catch (err) {
-                alert('Error accessing microphone: ' + err.message);
-                resetRecordingUI();
+            const sliceWidth = waveformCanvas.width * 1.0 / dataArray.length;
+            let x = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * waveformCanvas.height / 2;
+                if (i === 0) canvasCtx.moveTo(x, y);
+                else canvasCtx.lineTo(x, y);
+                x += sliceWidth;
             }
-        });
-
-        document.getElementById('stopRecording').addEventListener('click', () => {
-            const elapsed = (Date.now() - recordingStartTime) / 1000;
-            if (elapsed < minDuration) {
-                alert('Recording must be at least 15 seconds long.');
-                resetRecordingUI();
-                return;
-            }
-
-            mediaRecorder.stop();
-            isRecording = false;
-            document.getElementById('startRecording').style.display = 'inline-block';
-            document.getElementById('stopRecording').style.display = 'none';
-            document.getElementById('audio').disabled = false;
-        });
+            canvasCtx.lineTo(waveformCanvas.width, waveformCanvas.height / 2);
+            canvasCtx.stroke();
+        }
 
         function updateTimer() {
+            if (!isRecording) {
+                clearInterval(timerInterval);
+                return;
+            }
             const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
             const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
             const seconds = String(elapsed % 60).padStart(2, '0');
-            document.getElementById('recordingTimer').textContent = `${minutes}:${seconds}`;
+            if (recordingTimer) recordingTimer.textContent = `${minutes}:${seconds}`;
         }
 
-        function deleteRecording() {
-            document.getElementById('recordedAudio').style.display = 'none';
-            document.getElementById('audioPlayback').src = '';
+        window.deleteRecording = function() {
+            if (recordedAudioSection) recordedAudioSection.style.display = 'none';
+            if (audioPlayback) { audioPlayback.src = ''; URL.revokeObjectURL(audioPlayback.src); } // Revoke previous if any
             recordedBlob = null;
-            document.getElementById('audio').disabled = false;
-            document.getElementById('startRecording').disabled = false;
+            if (audioBlobInput) audioBlobInput.value = ''; 
+            if (audioInput) audioInput.disabled = false;
+            if (startRecordingButton) startRecordingButton.disabled = false;
+            resetRecordingUI(); 
         }
 
-        function reRecord() {
-            deleteRecording();
-            document.getElementById('startRecording').click();
+        window.reRecord = function() {
+            window.deleteRecording();
+            if (startRecordingButton) startRecordingButton.click();
         }
 
         function resetRecordingUI() {
-            isRecording = false;
-            document.getElementById('startRecording').style.display = 'inline-block';
-            document.getElementById('stopRecording').style.display = 'none';
-            document.getElementById('recordingStatus').textContent = '';
-            document.getElementById('recordingVisual').style.display = 'none';
-            document.getElementById('recordingTimer').textContent = '00:00';
-            document.getElementById('audio').disabled = false;
+            isRecording = false; 
+            // If mediaRecorder exists and is recording, stop its tracks before nullifying it
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                 mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                 // Don't call mediaRecorder.stop() here if we are aborting, to avoid onstop processing
+            }
+            // No need to nullify mediaRecorder here as it's created fresh on each record start
+
+            if (startRecordingButton) startRecordingButton.style.display = 'inline-block';
+            if (stopRecordingButton) stopRecordingButton.style.display = 'none';
+            if (recordingStatus) recordingStatus.textContent = '';
+            if (recordingVisual) recordingVisual.style.display = 'none';
+            if (recordingTimer) recordingTimer.textContent = '00:00';
+            if (audioInput) audioInput.disabled = false;
+            
             clearInterval(timerInterval);
-            if (audioContext) audioContext.close();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (audioContext && audioContext.state !== 'closed') {
+                 audioContext.close().catch(e => console.error("Error closing AudioContext:", e));
+            }
+            audioChunks = []; 
+            recordedBlob = null;
         }
 
-        // Form submission handling
-        document.getElementById('voiceForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const hasUpload = document.getElementById('audio').files.length > 0;
-            const hasRecording = recordedBlob !== null;
+        if(voiceForm) {
+            voiceForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const isUploadMethod = document.querySelector('input[name="voice_input_method"][value="upload"]:checked');
+                const isRecordMethod = document.querySelector('input[name="voice_input_method"][value="record"]:checked');
+                let isValid = false;
 
-            if (!hasUpload && !hasRecording) {
-                alert('Please either upload an audio file or record your voice.');
-                return;
-            }
+                if (isUploadMethod && audioInput && audioInput.files.length > 0) {
+                    isValid = true; 
+                } else if (isRecordMethod && recordedBlob) {
+                    const tempAudio = new Audio(URL.createObjectURL(recordedBlob));
+                    await new Promise(resolve => {
+                        tempAudio.onloadedmetadata = () => {
+                            if (tempAudio.duration >= minDuration) {
+                                isValid = true;
+                            } else {
+                                alert(`Recorded audio is too short. Minimum ${minDuration} seconds required. Current: ${Math.round(tempAudio.duration)}s`);
+                            }
+                            URL.revokeObjectURL(tempAudio.src);
+                            resolve();
+                        };
+                        tempAudio.onerror = () => {
+                             alert('Could not verify recorded audio duration.');
+                             URL.revokeObjectURL(tempAudio.src);
+                             resolve();
+                        }
+                    });
 
-            // Show processing overlay
-            const processingOverlay = document.getElementById('processingOverlay');
-            processingOverlay.style.display = 'flex';
-            document.getElementById('submitButton').disabled = true;
-
-            const formData = new FormData(this);
-
-            // If there's a recording, append it as a file
-            if (hasRecording) {
-                formData.delete('audio_blob'); // Remove the hidden input
-                formData.append('audio_blob', recordedBlob, 'recording.wav');
-            }
-
-            try {
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    // Redirect to the next page (handled by Flask)
-                    window.location.href = response.url;
                 } else {
-                    const errorText = await response.text();
-                    alert('Error submitting form: ' + errorText);
-                    processingOverlay.style.display = 'none';
-                    document.getElementById('submitButton').disabled = false;
+                    alert('Please either upload an audio file or record your voice.');
+                    return;
                 }
-            } catch (err) {
-                alert('Error submitting form: ' + err.message);
-                processingOverlay.style.display = 'none';
-                document.getElementById('submitButton').disabled = false;
+
+                if (!isValid) return;
+
+                if(submitButton) submitButton.disabled = true;
+                if(submitSpinner) submitSpinner.style.display = 'inline-block';
+
+                const formData = new FormData(this);
+                // Remove audio_blob if it was a hidden field, and append the blob file correctly
+                formData.delete('audio_blob'); 
+
+                if (isRecordMethod && recordedBlob) {
+                    // Use a consistent filename, backend can handle it.
+                    formData.append('audio_file', recordedBlob, 'user_recording.webm'); // Changed name to audio_file for consistency with upload
+                } else if (isUploadMethod && audioInput.files.length > 0) {
+                    formData.delete('audio_file'); // Ensure only one audio source if name is same
+                    formData.append('audio_file', audioInput.files[0]);
+                }
+
+
+                try {
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    let responseData;
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        responseData = await response.json();
+                    } else {
+                        responseData = { message: await response.text(), url: response.url }; 
+                    }
+
+                    if (response.ok) {
+                        if (responseData.redirect_url) { 
+                             window.location.href = responseData.redirect_url;
+                        } else if (response.redirected) { 
+                             window.location.href = response.url;
+                        } else {
+                            alert(responseData.message || 'Voice sample submitted successfully!');
+                        }
+                    } else {
+                        alert('Error: ' + (responseData.message || 'Unknown error submitting voice sample.'));
+                    }
+                } catch (err) {
+                    console.error('Form submission error:', err);
+                    alert('Error submitting form: ' + err.message);
+                } finally {
+                    if(submitButton) submitButton.disabled = false;
+                    if(submitSpinner) submitSpinner.style.display = 'none';
+                }
+            });
+        }
+        const defaultUploadRadio = document.querySelector('input[name="voice_input_method"][value="upload"]');
+        if (defaultUploadRadio && defaultUploadRadio.checked) {
+            const card = defaultUploadRadio.closest('.selectable-card');
+            if(card) {
+                card.classList.add('selected');
+                // toggleVoiceInput('upload'); // Removed: onclick on card label will trigger this
             }
-        });
+        }
+         // Correctly trigger toggle for initially checked radio
+        const initiallyCheckedRadio = document.querySelector('input.card-radio:checked');
+        if (initiallyCheckedRadio) {
+            const initiallySelectedCard = initiallyCheckedRadio.closest('.selectable-card');
+            if(initiallySelectedCard) initiallySelectedCard.classList.add('selected'); // Ensure card is visually selected
+            toggleVoiceInput(initiallyCheckedRadio.value); // Call toggle based on its value
+        } else {
+            // If nothing is checked by default, maybe select the first one and toggle
+            const firstRadio = document.querySelector('input.card-radio');
+            if(firstRadio){
+                const firstCard = firstRadio.closest('.selectable-card');
+                if(firstCard) firstCard.click(); // Simulate click to select and toggle
+            }
+        }
+    });
     </script>
 </body>
 </html>

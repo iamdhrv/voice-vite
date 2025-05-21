@@ -3,171 +3,436 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceVite - Event Details (Step 2)</title>
+    <title>VoiceVite - Event Details (Step 3)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        .guest-list-manual {
-            display: none;
-            margin-top: 20px;
-        }
-        .guest-entry {
+        /* Embedded styles specific to this page */
+        .voice-card {
+            box-shadow: 0 2px 16px 0 #6366f122;
+            border: 3px solid transparent;
+            border-radius: 1rem !important;
+            transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
+            min-height: 120px !important;
+            height: auto !important;
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+            flex-direction: column;
             align-items: center;
-        }
-        .guest-entry input {
-            flex: 1;
-        }
-        .remove-guest-btn {
-            background: #ff4d4f;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
+            justify-content: center;
+            padding: 1rem !important;
             cursor: pointer;
+            background-color: #fff;
+            flex-grow: 1;
         }
-        .radio-group {
+        .voice-card-content {
             display: flex;
-            gap: 20px;
-            margin-top: 10px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            text-align: center;
         }
-        .form-group#guestListCSV {
-            display: none;
-            margin-top: 20px;
+        .selectable-card.selected, .selectable-card:focus-within, .selectable-card:focus {
+            border-color: #6366f1;
+            background: linear-gradient(90deg, #f0f4ff 0%, #e0e7ff 100%);
+            box-shadow: 0 4px 32px 0 #6366f144;
         }
+        .selectable-card:hover {
+            border-color: #60a5fa;
+            background: #f8fafc;
+        }
+        .visually-hidden {
+            position: absolute !important;
+            width: 1px !important; height: 1px !important;
+            padding: 0 !important; margin: -1px !important;
+            overflow: hidden !important; clip: rect(0,0,0,0) !important;
+            border: 0 !important;
+        }
+        .guest-list-manual { display: none; }
+        .guest-entry { margin-bottom: 15px; align-items: center; }
+        .icon-btn {
+            background: #6366f1; color: white; border: none;
+            padding: 0.375rem 0.75rem; border-radius: 0.25rem; cursor: pointer;
+            font-size: 1rem; line-height: 1.5; display: inline-flex;
+            align-items: center; justify-content: center; width: 38px; height: 38px;
+        }
+        .icon-btn.remove { background: #ef4444; }
+        .icon-btn:hover { opacity: 0.85; }
+        #guestListCSV { display: none; }
+        .spinner {
+            display: none; width: 20px; height: 20px;
+            border: 3px solid #f3f3f3; border-top: 3px solid #6366f1;
+            border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .voicevite-title { font-weight: 700; letter-spacing:-1px; font-size:2.5rem; color:#222; }
+        .step-title { font-weight: 600; font-size:1.35rem; color:#222; }
+        .btn-link { text-decoration: none; }
+        .btn-link:hover { text-decoration: underline; }
+
+        /* --- START: Specific styles for Bootstrap Progress Bar on this page --- */
+        div.progress.rounded-pill.w-75 {
+            height: 8px !important; background-color: #e9ecef !important;
+            padding: 0 !important; overflow: hidden !important;
+            margin-left: auto; margin-right: auto;
+        }
+        div.progress.rounded-pill.w-75 > .progress-bar.bg-gradient {
+            display: flex !important; flex-direction: column !important;
+            justify-content: center !important; color: #fff !important;
+            text-align: center !important; white-space: nowrap !important;
+            background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%) !important;
+            margin: 0 !important; gap: 0 !important;
+            transition: width .6s ease !important;
+        }
+        /* --- END: Specific styles for Bootstrap Progress Bar --- */
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>VoiceVite</h1>
-            <div class="progress-bar">
-                <div class="progress-step completed">1</div>
-                <div class="progress-step completed">2</div>
-                <div class="progress-step active">3</div>
-            </div>
-        </header>
-        <main>
-            <h2>Step 3: Event Details (Part 2)</h2>
-            <p class="subtitle">Provide the remaining details and guest information.</p>
-
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <ul class="flash-messages">
-                        {% for category, message in messages %}
-                            <li class="flash-{{ category }}">{{ message }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            {% endwith %}
-
-            <form method="POST" action="{{ url_for('event_details_step2') }}" enctype="multipart/form-data">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="location">Location <span class="required">*</span></label>
-                        <input type="text" id="location" name="location" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Your Email <span class="required">*</span></label>
-                        <input type="email" id="email" name="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="cultural_prefs">Cultural Preferences</label>
-                        <input type="text" id="cultural_prefs" name="cultural_prefs">
-                    </div>
-                    <div class="form-group">
-                        <label for="special_instructions">Special Instructions</label>
-                        <textarea id="special_instructions" name="special_instructions"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="rsvp_deadline">RSVP Deadline <span class="required">*</span></label>
-                        <input type="date" id="rsvp_deadline" name="rsvp_deadline" required>
-                        <small>Must be before the event date.</small>
+    <div class="shadow-lg rounded-4 bg-white p-5 mx-auto" style="max-width: 640px; width:100%; margin-top: 2rem; margin-bottom: 2rem;">
+            <header class="mb-4 text-center">
+                <h1 class="voicevite-title mb-2">VoiceVite</h1>
+                <div class="d-flex align-items-center justify-content-center mb-4">
+                    <div class="progress rounded-pill w-75">
+                        <div class="progress-bar bg-gradient" role="progressbar" style="width: 70%;"></div>
                     </div>
                 </div>
+            </header>
+            <main>
+                <h2 class="step-title mb-2">Step 3: Event Details</h2>
+                <p class="subtitle mb-4">Provide the remaining details and guest information.</p>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="mb-3">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} shadow-sm py-2 px-3 mb-2" style="font-size:1rem;">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
 
-                <div class="form-group">
-                    <label>Add Guests</label>
-                    <div class="radio-group">
-                        <label>
-                            <input type="radio" name="guest_input_method" value="manual" onclick="toggleGuestInput('manual')"> Manual Entry
-                        </label>
-                        <label>
-                            <input type="radio" name="guest_input_method" value="csv" onclick="toggleGuestInput('csv')"> CSV Upload
-                        </label>
-                    </div>
-                </div>
-
-                <div class="guest-list-manual" id="guestListManual">
-                    <div id="guestEntries">
-                        <div class="guest-entry">
-                            <input type="text" name="guest_name[]" placeholder="Guest Name *" required>
-                            <input type="text" name="guest_phone[]" placeholder="Guest Phone Number *" required>
-                            <button type="button" class="remove-guest-btn" onclick="removeGuestEntry(this)">Remove</button>
+                <form method="POST" action="{{ url_for('event_details_step2') }}" enctype="multipart/form-data" id="eventForm" autocomplete="off">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label for="location" class="form-label">Location <span class="text-danger">*</span></label> 
+                            <input type="text" id="location" name="location" class="form-control form-control-lg rounded-3" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Your Email <span class="text-danger">*</span></label> 
+                            <input type="email" id="email" name="email" class="form-control form-control-lg rounded-3" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="cultural_prefs" class="form-label">Cultural Preferences</label>
+                            <input type="text" id="cultural_prefs" name="cultural_prefs" class="form-control form-control-lg rounded-3">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="rsvp_deadline" class="form-label">RSVP Deadline <span class="text-danger">*</span></label> 
+                            <input type="date" id="rsvp_deadline" name="rsvp_deadline" class="form-control form-control-lg rounded-3" required>
+                            <small class="form-text text-muted">Must be before the event date.</small> 
+                        </div>
+                        <div class="col-12">
+                            <label for="special_instructions" class="form-label">Special Instructions</label>
+                            <textarea id="special_instructions" name="special_instructions" class="form-control form-control-lg rounded-3" rows="3"></textarea>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="addGuestEntry()">Add Another Guest</button>
-                </div>
 
-                <div class="form-group" id="guestListCSV">
-                    <label for="guest_list">Guest List (CSV)</label>
-                    <div class="file-input-wrapper">
-                        <input type="file" id="guest_list" name="guest_list" accept=".csv">
-                        <span class="file-input-text">Drag & drop a CSV file or click to upload</span>
+                    <div class="mt-4 mb-3">
+                        <label class="form-label">Add Guests <span class="text-danger">*</span></label> 
+                        <div class="d-flex flex-column flex-md-row gap-3 justify-content-center align-items-stretch mt-2">
+                            <label class="voice-card selectable-card" tabindex="0">
+                                <input type="radio" name="guest_input_method" value="manual" class="visually-hidden card-radio" onclick="toggleGuestInput('manual')" autocomplete="off">
+                                <div class="voice-card-content">
+                                    <span class="fw-semibold fs-5 mb-1 text-primary text-center w-100">Manual Entry</span>
+                                    <span class="fs-6 text-secondary mb-1 text-center w-100">Enter guest details one by one 🧑‍💼</span>
+                                </div>
+                            </label>
+                            <label class="voice-card selectable-card" tabindex="0">
+                                <input type="radio" name="guest_input_method" value="csv" class="visually-hidden card-radio" onclick="toggleGuestInput('csv')" autocomplete="off">
+                                <div class="voice-card-content">
+                                    <span class="fw-semibold fs-5 mb-1 text-primary text-center w-100">CSV Upload</span>
+                                    <span class="fs-6 text-secondary mb-1 text-center w-100">Upload a CSV file with guest details 📄</span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
-                    <small>Format: Name,Phone (e.g., Priya Sharma,+919876543210)</small>
-                </div>
 
-                <div class="form-actions">
-                    <a href="{{ url_for('voice_selection') }}" class="btn btn-secondary">Back</a>
-                    <button type="submit" class="btn btn-primary">Create Invitation</button>
-                </div>
-            </form>
-        </main>
+                    <div class="guest-list-manual mt-4" id="guestListManual">
+                         <label class="form-label mb-2">Manual Guest Entries</label>
+                        <div id="guestEntries">
+                            <div class="guest-entry row g-2 align-items-center">
+                                <div class="col">
+                                    <input type="text" id="guest_name_0" name="guest_name[]" placeholder="Guest Name *" class="form-control form-control-lg rounded-3" required>
+                                </div>
+                                <div class="col">
+                                    <input type="text" id="guest_phone_0" name="guest_phone[]" placeholder="Guest Phone (+XXXXXXXXXX) *" class="form-control form-control-lg rounded-3" required>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="icon-btn remove" onclick="removeGuestEntry(this)">−</button>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="icon-btn" onclick="addGuestEntry()">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4" id="guestListCSV">
+                        <label for="guest_list_file" class="form-label">Guest List (CSV)</label>
+                        <div class="file-input-wrapper" onclick="document.getElementById('guest_list_file').click();">
+                            <input type="file" id="guest_list_file" name="guest_list" accept=".csv">
+                            <span class="file-input-text">Drag & drop a CSV file or click to upload</span>
+                        </div>
+                        <small class="form-text text-muted mt-1">Format: Name,Phone (e.g., Priya Sharma,+919876543210)</small>
+                    </div>
+
+                    <div style="height: 2.5rem;"></div> 
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('voice_selection') }}" class="btn btn-link btn-lg px-4">Back</a>
+                        <button type="submit" class="btn btn-primary btn-lg rounded-3 px-5 shadow-sm d-flex align-items-center" style="background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%); border: none;" id="submitButton">
+                            Create Invitation
+                            <div class="spinner" id="submitSpinner"></div>
+                        </button>
+                    </div>
+                </form>
+            </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script>
-        function toggleGuestInput(method) {
+    // All JS from previous version of event_details_step2.html is assumed to be here and correct.
+    // For brevity, not repeating the full JS block if it hasn't changed from the one that handled form logic,
+    // selectable cards, guest entry additions/removals, and async submission.
+    // Ensure the JS provided in the previous response for this file is used.
+    document.addEventListener('DOMContentLoaded', function() {
+        // JavaScript for selectable cards
+        document.querySelectorAll('.selectable-card').forEach(function(card) {
+            const radio = card.querySelector('input.card-radio');
+            if (!radio) return;
+
+            card.addEventListener('click', function(e) {
+                if (e.target === radio) return;
+
+                document.querySelectorAll('.selectable-card').forEach(function(c) {
+                    c.classList.remove('selected');
+                    const r = c.querySelector('input.card-radio');
+                    if(r) r.checked = false;
+                });
+
+                card.classList.add('selected');
+                radio.checked = true;
+                
+                if (radio.onclick) {
+                    radio.click(); 
+                }
+            });
+            card.addEventListener('keydown', function(e) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+             // Initial check for pre-selected card
+             if (radio.checked) {
+                card.classList.add('selected');
+                if (radio.onclick) radio.click(); // Trigger initial toggle
+            }
+        });
+
+        window.toggleGuestInput = function(method) {
             const manualSection = document.getElementById('guestListManual');
             const csvSection = document.getElementById('guestListCSV');
-            const manualInputs = document.querySelectorAll('#guestListManual input');
-            const csvInput = document.getElementById('guest_list');
+            const manualRequiredInputs = manualSection.querySelectorAll('input.form-control[name^="guest_name"], input.form-control[name^="guest_phone"]');
+            const csvInput = document.getElementById('guest_list_file');
 
             if (method === 'manual') {
                 manualSection.style.display = 'block';
                 csvSection.style.display = 'none';
-                csvInput.removeAttribute('required');
-                manualInputs.forEach(input => input.setAttribute('required', 'required'));
-            } else {
+                if(csvInput) csvInput.removeAttribute('required');
+                manualRequiredInputs.forEach(input => input.setAttribute('required', 'required'));
+                if (document.querySelectorAll('#guestEntries .guest-entry').length === 0 && manualSection.style.display === 'block') {
+                     addGuestEntry(); 
+                } else {
+                    const firstGuestName = document.getElementById('guest_name_0');
+                    const firstGuestPhone = document.getElementById('guest_phone_0');
+                    if(firstGuestName) firstGuestName.setAttribute('required', 'required');
+                    if(firstGuestPhone) firstGuestPhone.setAttribute('required', 'required');
+                }
+            } else { 
                 manualSection.style.display = 'none';
                 csvSection.style.display = 'block';
-                csvInput.setAttribute('required', 'required');
-                manualInputs.forEach(input => input.removeAttribute('required'));
+                if(csvInput) csvInput.setAttribute('required', 'required');
+                manualRequiredInputs.forEach(input => input.removeAttribute('required'));
             }
         }
 
-        function addGuestEntry() {
+        let guestEntryCounter = document.querySelectorAll('#guestEntries .guest-entry').length;
+
+        window.addGuestEntry = function() {
             const guestEntries = document.getElementById('guestEntries');
+            const newEntryId = guestEntryCounter; 
+
             const newEntry = document.createElement('div');
-            newEntry.className = 'guest-entry';
+            newEntry.className = 'guest-entry row g-2 align-items-center';
             newEntry.innerHTML = `
-                <input type="text" name="guest_name[]" placeholder="Guest Name *" required>
-                <input type="text" name="guest_phone[]" placeholder="Guest Phone Number *" required>
-                <button type="button" class="remove-guest-btn" onclick="removeGuestEntry(this)">Remove</button>
+                <div class="col">
+                    <input type="text" id="guest_name_${newEntryId}" name="guest_name[]" placeholder="Guest Name *" class="form-control form-control-lg rounded-3" required>
+                </div>
+                <div class="col">
+                    <input type="text" id="guest_phone_${newEntryId}" name="guest_phone[]" placeholder="Guest Phone (+XXXXXXXXXX) *" class="form-control form-control-lg rounded-3" required>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="icon-btn remove" onclick="removeGuestEntry(this)">−</button>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="icon-btn" onclick="addGuestEntry()">+</button>
+                </div>
             `;
+            
+            const currentEntries = guestEntries.children;
+            if (currentEntries.length > 0) {
+                const previousLastEntry = currentEntries[currentEntries.length - 1];
+                const addButtonOnPrevious = previousLastEntry.querySelector('button.icon-btn:not(.remove)');
+                if (addButtonOnPrevious) {
+                    addButtonOnPrevious.style.display = 'none';
+                }
+            }
             guestEntries.appendChild(newEntry);
+            guestEntryCounter++; 
         }
 
-        function removeGuestEntry(button) {
+        window.removeGuestEntry = function(button) {
             const guestEntries = document.getElementById('guestEntries');
             if (guestEntries.children.length > 1) {
-                button.parentElement.remove();
+                const entryToRemove = button.closest('.guest-entry');
+                if (entryToRemove) {
+                    entryToRemove.remove();
+                }
+                const lastEntry = guestEntries.lastElementChild;
+                if (lastEntry) {
+                    const addButtonOnLast = lastEntry.querySelector('button.icon-btn:not(.remove)');
+                    if (addButtonOnLast) {
+                         addButtonOnLast.style.display = 'inline-flex';
+                    }
+                }
             } else {
-                alert('You must have at least one guest entry.');
+                alert('You must have at least one guest entry for manual input.');
             }
         }
+        
+        function updateInitialAddButtonVisibility() {
+            const guestEntriesContainer = document.getElementById('guestEntries');
+            const entries = guestEntriesContainer.querySelectorAll('.guest-entry');
+            if (entries.length === 0) {
+                return; 
+            }
+            entries.forEach((entry, index) => {
+                const addButton = entry.querySelector('.icon-btn:not(.remove)');
+                if (addButton) {
+                    if (index === entries.length - 1) {
+                        addButton.style.display = 'inline-flex';
+                    } else {
+                        addButton.style.display = 'none';
+                    }
+                }
+            });
+        }
+        updateInitialAddButtonVisibility(); 
+
+        const defaultManualRadio = document.querySelector('input.card-radio[value="manual"]:checked');
+        if (defaultManualRadio) {
+            toggleGuestInput('manual');
+        }
+
+
+        const eventForm = document.getElementById('eventForm');
+        if(eventForm) {
+            eventForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const guestInputMethodRadio = document.querySelector('input.card-radio:checked');
+                if (!guestInputMethodRadio) {
+                    alert('Please select a guest input method (Manual Entry or CSV Upload).');
+                    return;
+                }
+                const guestInputMethod = guestInputMethodRadio.value;
+                const guestEntriesContainer = document.getElementById('guestEntries');
+
+                if (guestInputMethod === 'manual') {
+                    const guestNameInputs = guestEntriesContainer.querySelectorAll('input[name="guest_name[]"]');
+                    const guestPhoneInputs = guestEntriesContainer.querySelectorAll('input[name="guest_phone[]"]');
+                    
+                    if (guestNameInputs.length === 0 && guestEntriesContainer.children.length > 0) { 
+                         alert('Please add guest details or use CSV upload.');
+                         return;
+                    }
+                    if (guestEntriesContainer.children.length === 0 && guestNameInputs.length === 0 ) {
+                        alert('Please add at least one guest for manual entry or choose CSV Upload.');
+                        return;
+                    }
+
+                    for (let i = 0; i < guestNameInputs.length; i++) {
+                        if (!guestNameInputs[i].value || !guestPhoneInputs[i].value) {
+                            alert('Please fill in all guest names and phone numbers for manual entries.');
+                            return;
+                        }
+                        if (!guestPhoneInputs[i].value.match(/^\+[1-9]\d{1,14}$/)) {
+                            alert('Phone numbers must be in E.164 format (e.g., +919876543210). Please correct entry: ' + guestPhoneInputs[i].value);
+                            return;
+                        }
+                    }
+                } else { 
+                    const csvInput = document.getElementById('guest_list_file');
+                    if (csvInput && !csvInput.files.length && csvInput.hasAttribute('required')) {
+                        alert('Please upload a CSV file.');
+                        return;
+                    }
+                }
+
+                const submitButton = document.getElementById('submitButton');
+                const submitSpinner = document.getElementById('submitSpinner');
+                if(submitButton) submitButton.disabled = true;
+                if(submitSpinner) submitSpinner.style.display = 'inline-block';
+
+                const formData = new FormData(this);
+
+                try {
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        if (response.redirected) {
+                            window.location.href = response.url; 
+                        } else {
+                            const contentType = response.headers.get("content-type");
+                            if (contentType && contentType.indexOf("application/json") !== -1) {
+                                const responseData = await response.json();
+                                if (responseData.redirect_url) {
+                                    window.location.href = responseData.redirect_url;
+                                } else {
+                                    alert(responseData.message || 'Operation successful, but no redirect URL provided.');
+                                }
+                            } else {
+                                console.log("Server responded with non-JSON, non-redirect on POST success. Assuming success and redirecting to index.");
+                                alert('Event created successfully! Redirecting...'); 
+                                window.location.href = "{{ url_for('index') }}"; 
+                            }
+                        }
+                    } else {
+                        const errorText = await response.text();
+                        alert('Error: ' + (errorText || 'Failed to process request. Status: ' + response.status));
+                    }
+                } catch (err) {
+                    console.error('Form submission error:', err);
+                    alert('Error submitting form: ' + err.message);
+                } finally { // Ensure this block is present to re-enable button and hide spinner
+                    if(submitButton) submitButton.disabled = false;
+                    if(submitSpinner) submitSpinner.style.display = 'none';
+                }
+            });
+        }
+    });
     </script>
 </body>
 </html>
