@@ -1,6 +1,7 @@
 from src.database import db
 from src.models import Event, Guest, RSVP
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import func # Add this import
 import logging
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,42 @@ def update_event_status(event_id: int, status: str) -> Event | None:
     except Exception as e:
         db.session.rollback()
         logger.error(f"Unexpected error updating event status for event {event_id}: {e}")
+        return None
+
+def update_event_fields(event_id: int, update_data: dict) -> Event | None:
+    """
+    Updates specified fields of an existing event.
+    
+    Args:
+        event_id: The ID of the event to update.
+        update_data: A dictionary where keys are event model attribute names
+                     (e.g., 'status', 'final_invitation_script') and values are
+                     the new values for these attributes.
+                     
+    Returns:
+        The updated Event object if successful, None otherwise.
+    """
+    try:
+        event = db.session.get(Event, event_id)
+        if event:
+            for key, value in update_data.items():
+                if hasattr(event, key):
+                    setattr(event, key, value)
+                else:
+                    logger.warning(f"Attempted to update non-existent attribute '{key}' for event {event_id}.")
+            db.session.commit()
+            logger.info(f"Event ID {event_id} updated successfully with data: {update_data}.")
+            return event
+        else:
+            logger.warning(f"Event with ID {event_id} not found for update.")
+            return None
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error(f"SQLAlchemyError updating event {event_id} in PostgreSQL: {e}")
+        return None
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Unexpected error updating event {event_id}: {e}")
         return None
 
 def create_guest(event_id: int, guest_data: dict) -> Guest | None:
@@ -204,3 +241,62 @@ def get_rsvps_for_event(event_id: int) -> list[RSVP]:
     except Exception as e:
         logger.error(f"Unexpected error retrieving RSVPs for event {event_id}: {e}")
         return []
+
+def get_events_for_user(user_email: str) -> list[Event]:
+    """Retrieves all events for a given user, ordered by creation descending."""
+    try:
+        events = Event.query.filter_by(user_email=user_email).order_by(Event.id.desc()).all()
+        logger.info(f"Retrieved {len(events)} events for user {user_email}.")
+        return events
+    except SQLAlchemyError as e:
+        logger.error(f"Error retrieving events for user {user_email} from PostgreSQL: {e}")
+        return [] # Return empty list on error
+    except Exception as e:
+        logger.error(f"Unexpected error retrieving events for user {user_email}: {e}")
+        return []
+
+def get_rsvp_summary_for_event(event_id: int) -> dict:
+    """
+    Calculates RSVP summary (yes, no, maybe, pending) for an event.
+    Pending = Total Guests - (Yes + No + Maybe responses).
+    """
+    summary = {'yes': 0, 'no': 0, 'maybe': 0, 'pending': 0}
+    total_guests = 0 # Initialize to ensure it's in scope for exception blocks
+    try:
+        # Get total number of guests for the event
+        total_guests = Guest.query.filter_by(event_id=event_id).count()
+
+        if total_guests == 0:
+            logger.info(f"No guests found for event {event_id}, RSVP summary is all zeros.")
+            return summary
+
+        # Get RSVP counts grouped by response
+        # Vapi webhook saves response as "Yes", "No", "Maybe", "No Response", "Call Failed"
+        # We are interested in "Yes", "No", "Maybe"
+        rsvp_counts_query_result = db.session.query(
+            RSVP.response, func.count(RSVP.id)
+        ).filter(RSVP.event_id == event_id).group_by(RSVP.response).all()
+
+        responded_count = 0
+        for response_status, count in rsvp_counts_query_result:
+            if response_status: # Make sure response_status is not None
+                status_lower = response_status.lower()
+                if status_lower in ['yes', 'no', 'maybe']:
+                    summary[status_lower] = count
+                    responded_count += count
+        
+        summary['pending'] = total_guests - responded_count
+        if summary['pending'] < 0: 
+            summary['pending'] = 0 
+            logger.warning(f"Pending count for event {event_id} was negative, adjusted to 0. Total: {total_guests}, Responded: {responded_count}")
+
+        logger.info(f"RSVP summary for event {event_id}: {summary}")
+        return summary
+    except SQLAlchemyError as e:
+        logger.error(f"SQLAlchemyError calculating RSVP summary for event {event_id}: {e}")
+        # Fallback: if total_guests was fetched, pending is total_guests, else 0
+        return {'yes': 0, 'no': 0, 'maybe': 0, 'pending': total_guests}
+    except Exception as e:
+        logger.error(f"Unexpected error calculating RSVP summary for event {event_id}: {e}")
+        # Fallback
+        return {'yes': 0, 'no': 0, 'maybe': 0, 'pending': total_guests}

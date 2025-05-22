@@ -18,7 +18,8 @@ class VapiHandler:
         }
     
     def make_outbound_call(self, phone_number: str, assistant_id: str, guest_name: str, 
-                          event_details: dict, guest_id_db: int, voice_choice: str = 'male') -> Optional[str]:
+                          event_details: dict, guest_id_db: int, final_script: str, 
+                          voice_choice: str = 'male') -> Optional[str]:
         """
         Initiates an outbound call using the Vapi API with event variables and a custom first message.
         
@@ -26,8 +27,9 @@ class VapiHandler:
             phone_number: The phone number to call in E.164 format
             assistant_id: The ID of the Vapi assistant to use
             guest_name: The name of the guest being called
-            event_details: Dictionary containing event information
+            event_details: Dictionary containing event information (includes eventId, voiceSampleId, etc.)
             guest_id_db: The PostgreSQL database ID of the guest
+            final_script: The finalized and potentially user-edited script content for the main system prompt.
             voice_choice: The voice type ('male', 'female', or 'custom')
             
         Note:
@@ -118,14 +120,16 @@ class VapiHandler:
                 location=variable_values["[Location]"]
             )
 
-            # Load the prompt from VoiceAssitantPrompt.md
-            with open("src/voice_config/VoiceAssitantPrompt.md", "r") as file:
-                prompt_template = file.read()
+            # Personalize the final_script for the current guest.
+            # It's assumed that event-specific details like [HostName], [EventDate] etc.,
+            # were already filled by _generate_event_script before user editing.
+            # If final_script might still contain [HostName] etc. that need filling,
+            # this personalization step would be more complex.
+            # For now, only substituting {{GuestName}} as per primary requirement.
+            personalized_script = final_script.replace("{{GuestName}}", guest_name)
+            # Example: If final_script could also contain {{EventDate}}, this would be:
+            # personalized_script = personalized_script.replace("{{EventDate}}", formatted_event_date)
 
-            # Replace placeholders in the prompt with variable values
-            formatted_prompt = prompt_template
-            for placeholder, value in variable_values.items():
-                formatted_prompt = formatted_prompt.replace(placeholder, value)
 
             # Set voice configuration based on voice choice
             voice_config = {}
@@ -163,18 +167,27 @@ class VapiHandler:
                         "messages": [
                             {
                                 "role": "system",
-                                "content": formatted_prompt
+                                "content": personalized_script # Use the personalized script
                             }
                         ]
                     },
                     "voice": voice_config
                 },
                 "metadata": {
-                    "guestId": str(guest_id_db), # Use new param, ensure string
-                    "eventId": str(event_details.get("eventId")), # Ensure string
+                    "guestId": str(guest_id_db), 
+                    "eventId": str(event_details.get("eventId")), 
                     "voiceSampleId": event_details.get("voiceSampleId")
                 }
             }
+
+            # Conditionally add backgroundSound
+            background_music_url = event_details.get("background_music_url")
+            if background_music_url: # Check if it's not None and not an empty string
+                payload["assistantOverrides"]["backgroundSound"] = {
+                    "url": background_music_url,
+                    "volume": 0.2,
+                    "loop": "false" # As per issue spec
+                }
 
             print(f"Formatted First Message: {formatted_first_message}")
             print(f"Vapi API Key: {self.api_key}")

@@ -4,7 +4,7 @@ Main Flask application for VoiceVite. (Refactored for PostgreSQL)
 Handles web form submissions, CSV uploads, voice training, and initiates outbound calls.
 """
 import os
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta # Ensure timedelta is imported
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify, session
 from werkzeug.utils import secure_filename
 import logging
@@ -46,24 +46,105 @@ logger = logging.getLogger(__name__)
 eleven_labs_handler = ElevenLabsHandler(api_key=config.ELEVENLABS_API_KEY)
 vapi_handler = VapiHandler(api_key=config.VAPI_API_KEY)
 
+# Helper function to generate event script
+def _generate_event_script(event: Event, guest_name_placeholder: str = "{{GuestName}}") -> str:
+    prompt_template_path = "src/voice_config/VoiceAssitantPrompt.md"
+    try:
+        with open(prompt_template_path, "r") as file:
+            prompt_template = file.read()
+    except FileNotFoundError:
+        logger.error(f"Prompt template file not found at {prompt_template_path}")
+        return "Error: Could not load script template."
+
+    # Standard formatting for dates and times
+    event_date_formatted = event.event_date.strftime('%A, %B %d, %Y') if event.event_date else "a future date"
+    event_time_formatted = event.event_time.strftime('%I:%M %p').lstrip("0") if event.event_time else "a suitable time"
+    rsvp_deadline_formatted = event.rsvp_deadline.strftime('%A, %B %d, %Y') if event.rsvp_deadline else "soon"
+
+    # Derived values
+    # ArrivalTime
+    formatted_arrival_time = "15 minutes before the event (specific time not set)"
+    if event.event_date and event.event_time:
+        try:
+            event_datetime_obj = datetime.combine(event.event_date, event.event_time)
+            arrival_datetime = event_datetime_obj - timedelta(minutes=15)
+            formatted_arrival_time = arrival_datetime.strftime('%I:%M %p').lstrip("0")
+        except TypeError: # Handle cases where date/time might not be proper objects despite not being None
+            logger.warning("Could not combine event.event_date and event.event_time for ArrivalTime calculation.")
+
+
+    # DressCode
+    derived_dress_code = "not specified"
+    if event.special_instructions:
+        si_lower = event.special_instructions.lower()
+        dress_code_marker = "dress code"
+        if dress_code_marker in si_lower:
+            start_index = si_lower.find(dress_code_marker) + len(dress_code_marker)
+            # Remove "is", ":", or "." if they are immediately after "dress code"
+            substring_after_marker = event.special_instructions[start_index:].lstrip(": is.").strip()
+            # Take text until the next sentence or a significant punctuation like ';'
+            potential_dress_code = substring_after_marker.split('.')[0].split(';')[0].strip()
+            if potential_dress_code: # Ensure it's not empty
+                derived_dress_code = potential_dress_code
+
+    # AlternateDate
+    formatted_alternate_date = "the next day"
+    if event.event_date:
+        try:
+            alternate_event_date_obj = event.event_date + timedelta(days=1)
+            formatted_alternate_date = alternate_event_date_obj.strftime('%A, %B %d, %Y')
+        except TypeError:
+             logger.warning("Could not calculate AlternateDate due to event.event_date type.")
+
+
+    # AlternateTime (same as original event time if available)
+    formatted_alternate_time = event_time_formatted # Uses the already formatted event_time_formatted
+
+    variable_values = {
+        "[HostName]": event.host_name or "the host",
+        "[GuestName]": guest_name_placeholder,
+        "[EventType]": event.event_type or "an event",
+        "[EventDate]": event_date_formatted,
+        "[EventTime]": event_time_formatted,
+        "[Location]": event.location or "a location",
+        "[CulturalPreferences]": event.cultural_preferences or "",
+        "[SpecialInstructions]": event.special_instructions or "", # The full instructions
+        "[Duration]": event.duration or "a few hours",
+        "[RSVPDeadline]": rsvp_deadline_formatted,
+        "[ArrivalTime]": formatted_arrival_time,
+        "[DressCode]": derived_dress_code,
+        "[AlternateDate]": formatted_alternate_date,
+        "[AlternateTime]": formatted_alternate_time
+    }
+
+    formatted_prompt = prompt_template
+    for placeholder, value in variable_values.items():
+        formatted_prompt = formatted_prompt.replace(placeholder, str(value)) # Ensure value is string
+    
+    return formatted_prompt
+
 def allowed_file(filename, allowed_extensions_set):
     """Checks if the uploaded file has an allowed extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions_set
 
 def initiate_vapi_call(event_id: int, guest_id: int, guest_name: str, phone_number: str, 
-                       voice_sample_id: str, event_details_for_vapi: dict, voice_choice: str = 'male'):
+                       voice_sample_id: str, event_details_for_vapi: dict, 
+                       final_script: str, # New parameter
+                       voice_choice: str = 'male'):
     """
     Initiates a Vapi call to a guest with the specified voice and event details.
     Uses PostgreSQL event_id and guest_id (integers).
     """
     try:
         # VapiHandler's make_outbound_call expects guest_id_db (int)
+        # Ensure vapi_handler is initialized (it is globally in app.py)
         call_id = vapi_handler.make_outbound_call(
             phone_number=phone_number,
             assistant_id=config.VAPI_ASSISTANT_ID, 
             guest_name=guest_name,
-            event_details=event_details_for_vapi, # This dict should have stringified eventId
-            guest_id_db=guest_id, # Pass integer guest_id
+            event_details=event_details_for_vapi,
+            guest_id_db=guest_id,
+            final_script=final_script,  # Pass the new parameter
             voice_choice=voice_choice
         )
 
@@ -189,11 +270,15 @@ def event_details_step2():
         cultural_preferences = request.form.get('cultural_prefs')
         special_instructions = request.form.get('special_instructions')
         rsvp_deadline_str = request.form.get('rsvp_deadline')
-        guest_input_method = request.form.get('guest_input_method')
+        # guest_input_method = request.form.get('guest_input_method') # No longer directly needed for validation here
+        background_music_url = request.form.get('background_music') 
 
-        if not all([location, user_email, rsvp_deadline_str, guest_input_method]):
+        if not all([location, user_email, rsvp_deadline_str]): # guest_input_method removed from check
             flash('Please fill in all required fields for this step.', 'error')
             return redirect(url_for('event_details_step2'))
+
+        # Store user_email in session
+        session['user_email'] = user_email
 
         event_details_part1 = session.get('event_details_part1', {})
         voice_choice = session.get('voice_choice')
@@ -213,8 +298,9 @@ def event_details_step2():
             'rsvp_deadline': rsvp_deadline_str, # String from form
             'user_email': user_email,
             'voice_sample_id': voice_sample_id,
-            'status': 'Pending',
-            'guest_list_csv_path': None
+            'status': 'draft', # CHANGED to 'draft'
+            'guest_list_csv_path': None, 
+            'background_music_url': background_music_url,
         }
 
         try:
@@ -229,114 +315,172 @@ def event_details_step2():
             flash('Invalid date or time format. Please use YYYY-MM-DD for dates and HH:MM for time.', 'error')
             return redirect(url_for('event_details_step2'))
 
-        csv_path_to_save = None 
+        # Handle CSV file saving if provided, but no guest processing here
+        guest_input_method = request.form.get('guest_input_method')
+        csv_path_to_save = None
         if guest_input_method == 'csv':
-            if 'guest_list' not in request.files or request.files['guest_list'].filename == '':
-                flash('No guest list file selected for CSV upload.', 'error')
-                return redirect(url_for('event_details_step2'))
-            file = request.files['guest_list']
-            # Using config.ALLOWED_EXTENSIONS for CSV as it's {'csv'} from config.py
-            if file and allowed_file(file.filename, config.ALLOWED_EXTENSIONS): 
-                filename = secure_filename(file.filename) # Use the original filename for the CSV
-                csv_path_to_save = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                db_event_data['guest_list_csv_path'] = csv_path_to_save 
-            else:
-                flash('Invalid file type for guest list. Please upload a CSV file.', 'error')
-                return redirect(url_for('event_details_step2'))
+            if 'guest_list' in request.files and request.files['guest_list'].filename != '':
+                file = request.files['guest_list']
+                if file and allowed_file(file.filename, config.ALLOWED_EXTENSIONS):
+                    filename = secure_filename(file.filename)
+                    csv_path_to_save = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    db_event_data['guest_list_csv_path'] = csv_path_to_save
+                    try:
+                        file.save(csv_path_to_save)
+                        logger.info(f"Guest list CSV (if any) saved to {csv_path_to_save}")
+                    except Exception as e:
+                        logger.error(f"Failed to save CSV file {csv_path_to_save}: {e}")
+                        flash('Error saving guest list CSV file, but proceeding.', 'warning')
+                else:
+                    flash('Invalid file type for guest list. Only CSV allowed. Proceeding without CSV.', 'warning')
         
         created_event = postgres_client.create_event(db_event_data)
         if not created_event:
-            flash('Failed to create event in database.', 'error')
+            flash('Failed to create event draft in database.', 'error')
             return redirect(url_for('event_details_step2'))
+        
         event_id = created_event.id 
 
-        if guest_input_method == 'csv' and csv_path_to_save:
-            try:
-                request.files['guest_list'].save(csv_path_to_save) # Save the file
-                logger.info(f"Guest list CSV saved to {csv_path_to_save}")
-            except Exception as e:
-                logger.error(f"Failed to save CSV file {csv_path_to_save}: {e}")
-                postgres_client.update_event_status(event_id, "Failed - CSV Save Error")
-                flash('Error saving guest list CSV file.', 'error')
-                # Not returning here, event is created, but guest processing might fail or be skipped.
-        
+        # Fetch the full event object from DB to pass to script generator and template
+        event_object_from_db = postgres_client.get_event_by_id(event_id)
+        if not event_object_from_db:
+            flash('Failed to retrieve event draft from database after creation.', 'error')
+            # Consider how to handle this - maybe delete the created_event or set status to failed
+            return redirect(url_for('event_details_step2'))
+
+        # Generate the sample script using the helper function
+        sample_script = _generate_event_script(event_object_from_db) 
+
+        # Clean up session variables - keep voice_choice and voice_sample_id as they are part of event config
+        session.pop('event_details_part1', None)
+        # session.pop('user_email', None) # user_email is now in session for dashboard
+
+        return render_template('preview_script.html', 
+                               generated_script=sample_script, 
+                               event_id=event_id, 
+                               event_details=event_object_from_db)
+
+    # GET request or if form validation fails and redirects back
+    return render_template('event_details_step2.html')
+
+@app.route('/confirm-and-send-invitations', methods=['POST'])
+def confirm_and_send_invitations():
+    event_id_str = request.form.get('event_id')
+    final_script = request.form.get('final_script')
+
+    if not event_id_str or not final_script:
+        flash('Missing event ID or script. Cannot proceed.', 'error')
+        # Attempt to redirect back to preview if event_id is available, else index
+        return redirect(url_for('preview_script', event_id=event_id_str) if event_id_str else url_for('index'))
+
+    try:
+        event_id = int(event_id_str)
+    except ValueError:
+        flash('Invalid event ID format.', 'error')
+        return redirect(url_for('index'))
+
+    # --- 1. Update Event with final script and status ---
+    update_payload = {
+        'final_invitation_script': final_script,
+        'status': 'processing'  # Or 'scheduled' as per original plan notes
+    }
+    updated_event_obj = postgres_client.update_event_fields(event_id, update_payload)
+    
+    if not updated_event_obj:
+        flash(f'Failed to update event {event_id} with final script and status. Please try again.', 'error')
+        return redirect(url_for('dashboard')) # Redirect to dashboard on failure
+
+    # The 'event' variable for subsequent logic should be this updated_event_obj
+    event = updated_event_obj 
+
+    # --- 2. Fetch event details (needed for VAPI call, re-fetch for safety) ---
+    # This explicit re-fetch is no longer strictly necessary as updated_event_obj IS the event
+    # event = postgres_client.get_event_by_id(event_id) 
+    # if not event: 
+    #     flash(f'Event with ID {event_id} not found after update.', 'error')
+    #     return redirect(url_for('dashboard'))
+
+    # --- 3. Process Guest List (from CSV if path exists) ---
+    guests_to_call = []
+    if event.guest_list_csv_path:
+        try:
+            parsed_guests_from_csv = parse_csv_to_guests(event.guest_list_csv_path)
+            if parsed_guests_from_csv:
+                db_guests_data_for_batch = [{'guest_name': g['GuestName'], 'phone_number': g['PhoneNumber']} for g in parsed_guests_from_csv]
+                created_guest_objects = postgres_client.add_guests_batch(event_id, db_guests_data_for_batch)
+                if created_guest_objects:
+                    guests_to_call.extend(created_guest_objects)
+                    logger.info(f"Added {len(created_guest_objects)} guests from CSV for event {event_id}.")
+                else:
+                    # This means add_guests_batch returned None or empty list
+                    logger.warning(f"postgres_client.add_guests_batch did not return guests for event {event_id} from CSV: {event.guest_list_csv_path}")
+                    flash('Could not process guests from CSV file (add_guests_batch failed).', 'warning')
+            else:
+                logger.info(f"No valid guests found in CSV file: {event.guest_list_csv_path} for event {event_id}")
+                flash('CSV file specified but no valid guests found in it.', 'warning')
+        except FileNotFoundError:
+            logger.error(f"Guest CSV file not found at path: {event.guest_list_csv_path} for event {event_id}")
+            flash('Guest list CSV file not found. Cannot process guests.', 'error')
+        except Exception as e: # Catch other parsing or processing errors
+            logger.error(f"Error processing CSV {event.guest_list_csv_path} for event {event_id}: {e}")
+            flash(f'Error processing guest CSV file: {str(e)}', 'error')
+    
+    # --- 4. Initiate Calls ---
+    if not guests_to_call:
+        flash('No guests found to call for this event. Event status set, but no calls initiated.', 'info')
+        postgres_client.update_event_status(event_id, "Processed - No Guests")
+    else:
+        event_date_str = event.event_date.strftime('%Y-%m-%d') if event.event_date else ""
+        event_time_str = event.event_time.strftime('%H:%M') if event.event_time else ""
+        rsvp_deadline_str = event.rsvp_deadline.strftime('%Y-%m-%d') if event.rsvp_deadline else ""
+
         event_details_for_vapi = {
-            "eventId": str(event_id), 
-            "voiceSampleId": voice_sample_id,
-            "hostName": db_event_data['host_name'],
-            "eventType": db_event_data['event_type'],
-            "eventDate": db_event_data['event_date'].strftime('%Y-%m-%d') if db_event_data['event_date'] else "",
-            "eventTime": db_event_data['event_time'].strftime('%H:%M') if db_event_data['event_time'] else "",
-            "location": db_event_data['location'],
-            "culturalPreferences": db_event_data['cultural_preferences'] or "",
-            "duration": db_event_data['duration'],
-            "specialInstructions": db_event_data['special_instructions'] or "",
-            "rsvpDeadline": db_event_data['rsvp_deadline'].strftime('%Y-%m-%d') if db_event_data['rsvp_deadline'] else ""
+            "eventId": str(event.id),
+            "voiceSampleId": event.voice_sample_id,
+            "hostName": event.host_name,
+            "eventType": event.event_type,
+            "eventDate": event_date_str,
+            "eventTime": event_time_str,
+            "location": event.location,
+            "culturalPreferences": event.cultural_preferences or "",
+            "duration": event.duration,
+            "specialInstructions": event.special_instructions or "",
+            "rsvpDeadline": rsvp_deadline_str,
+            "background_music_url": event.background_music_url or "",
+            "final_script": final_script # Added for Step 12
         }
         
-        processed_guests_count = 0
-        db_guests_data_for_batch = [] 
+        voice_choice = 'custom' 
+        if event.voice_sample_id == 'JBFqnCBsd6RMkjVDRZzb': 
+            voice_choice = 'male'
+        elif event.voice_sample_id == 'XrExE9yKIg1WjnnlVkGX': 
+            voice_choice = 'female'
 
-        if guest_input_method == 'manual':
-            guest_names = request.form.getlist('guest_name[]')
-            guest_phones = request.form.getlist('guest_phone[]')
-            
-            if not guest_names or not any(g_name.strip() for g_name in guest_names): 
-                postgres_client.update_event_status(event_id, "Pending - No Manual Guests")
-                flash('Event created, but no manual guests were provided to call.', 'info')
-            else:
-                for name, phone in zip(guest_names, guest_phones):
-                    if not name.strip() or not phone.strip(): 
-                        logger.warning(f"Skipping manual guest due to empty name or phone for event {event_id}. Name: '{name}', Phone: '{phone}'")
-                        continue
-                    if not phone.startswith('+') or not phone[1:].isdigit():
-                        flash(f'Invalid phone number format for {name}: {phone}. Must be E.164 format (e.g., +19876543210).', 'error')
-                        postgres_client.update_event_status(event_id, "Failed - Invalid Phone Format")
-                        return redirect(url_for('event_details_step2'))
-                    db_guests_data_for_batch.append({'guest_name': name, 'phone_number': phone})
-                
-                if not db_guests_data_for_batch: 
-                     postgres_client.update_event_status(event_id, "Pending - No Valid Manual Guests")
-                     flash('No valid manual guests provided after filtering.', 'info')
-
-        elif guest_input_method == 'csv' and csv_path_to_save: 
-            parsed_guest_list = parse_csv_to_guests(csv_path_to_save)
-            if not parsed_guest_list:
-                flash('No valid guests found in CSV. Event created, but no calls made.', 'warning')
-                postgres_client.update_event_status(event_id, "Pending - No Guests from CSV")
-            else:
-                db_guests_data_for_batch = [{'guest_name': g['GuestName'], 'phone_number': g['PhoneNumber']} for g in parsed_guest_list]
+        call_count = 0
+        for guest_obj in guests_to_call:
+            initiate_vapi_call( 
+                event_id=event.id, 
+                guest_id=guest_obj.id, 
+                guest_name=guest_obj.guest_name, 
+                phone_number=guest_obj.phone_number, 
+                voice_sample_id=event.voice_sample_id, 
+                event_details_for_vapi=event_details_for_vapi, # Does NOT contain final_script for this call
+                final_script=final_script, # Pass the final_script from the form
+                voice_choice=voice_choice
+            )
+            call_count += 1
         
-        if db_guests_data_for_batch:
-            created_guests = postgres_client.add_guests_batch(event_id, db_guests_data_for_batch)
-            if created_guests:
-                processed_guests_count = len(created_guests)
-                for guest_obj in created_guests:
-                    initiate_vapi_call(event_id, guest_obj.id, guest_obj.guest_name, guest_obj.phone_number, 
-                                       voice_sample_id, event_details_for_vapi, voice_choice)
-            else: 
-                db_op_type = "Manual Guest Batch Add" if guest_input_method == 'manual' else "CSV Guest Batch Add"
-                postgres_client.update_event_status(event_id, f"Failed - {db_op_type}")
-                flash(f'Failed to add {guest_input_method} guests to the database.', 'error')
-        
-        # Update event status and flash messages based on processing outcome
-        if processed_guests_count > 0:
-            postgres_client.update_event_status(event_id, "Calls Initiated")
-            flash(f'{processed_guests_count} guest calls initiated successfully!', 'success')
-        elif not db_guests_data_for_batch: # If no guests were ultimately processed for calls
-            # Status already set for these specific cases earlier, so just check if we need a generic one
-            current_event_status_obj = postgres_client.get_event_by_id(event_id)
-            if current_event_status_obj and current_event_status_obj.status == 'Pending': # If no specific pending status was set
-                 postgres_client.update_event_status(event_id, "Pending - No Guests To Call")
-                 flash('Event created, but no guests were available or processed for calls.', 'info')
+        if call_count > 0:
+            flash(f'{call_count} guest calls initiated successfully based on your final script!', 'success')
+            postgres_client.update_event_status(event_id, "Calls Initiated") 
+        else:
+            flash('Calls were intended, but none were initiated due to an issue.', 'warning')
+            # Keep status as 'processing' or set to a specific error status if needed
+            # postgres_client.update_event_status(event_id, "Processed - Call Error") # Example if specific status needed
 
+    # --- 5. Redirect ---
+    return redirect(url_for('dashboard'))
 
-        session.pop('event_details_part1', None)
-        session.pop('voice_choice', None)
-        session.pop('voice_sample_id', None)
-        return redirect(url_for('success', event_id=event_id))
-
-    return render_template('event_details_step2.html')
 
 @app.route('/vapi/callback', methods=['POST'])
 def vapi_callback():
@@ -495,6 +639,31 @@ def webhook():
             logger.error(f"Failed to log RSVP via webhook for guest {guest_id}, event {event_id}")
 
     return jsonify({'status': 'Webhook event received'}), 200
+
+@app.route('/dashboard', methods=['GET'])
+def dashboard():
+    if 'user_email' not in session:
+        flash('Please complete event creation (step 1 and 2) to associate an email and view the dashboard.', 'info')
+        return redirect(url_for('index'))
+
+    user_email = session['user_email']
+    
+    user_events = postgres_client.get_events_for_user(user_email)
+    
+    events_data_for_template = []
+    if user_events:
+        for event_obj in user_events:
+            rsvp_summary = postgres_client.get_rsvp_summary_for_event(event_obj.id)
+            # Direct count from Guest table for robustness
+            guest_count = Guest.query.filter_by(event_id=event_obj.id).count()
+
+            events_data_for_template.append({
+                'event': event_obj,
+                'rsvp_summary': rsvp_summary,
+                'guest_count': guest_count
+            })
+            
+    return render_template('dashboard.html', events_data=events_data_for_template)
 
 def create_db_tables():
     """Creates database tables if they don't already exist."""

@@ -17,8 +17,10 @@ class Event(db.Model):
     rsvp_deadline = db.Column(db.Date, nullable=True)
     user_email = db.Column(db.String(120), nullable=True)
     voice_sample_id = db.Column(db.String(100), nullable=True) # Assuming this is an ID from a voice service
-    status = db.Column(db.String(50), default='Pending') # e.g., "Pending", "Completed", "Failed"
+    status = db.Column(db.String(50), default='draft') # e.g., "Pending", "Completed", "Failed"
     guest_list_csv_path = db.Column(db.String(255), nullable=True)
+    background_music_url = db.Column(db.String(512), nullable=True) # New field
+    final_invitation_script = db.Column(db.Text, nullable=True) # New field
 
     # Relationships
     guests = db.relationship('Guest', backref='event', lazy=True, cascade="all, delete-orphan")

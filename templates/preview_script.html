@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceVite - Preview & Edit Script</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .event-summary-card {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: .75rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .event-summary-card h5 {
+            color: #495057;
+            margin-bottom: .75rem;
+        }
+        .event-summary-card p {
+            margin-bottom: .5rem;
+            color: #212529;
+        }
+        .event-summary-card strong {
+            color: #000;
+        }
+        .voicevite-title { font-weight: 700; letter-spacing:-1px; font-size:2.5rem; color:#222; }
+        .step-title { font-weight: 600; font-size:1.35rem; color:#222; }
+        /* Styles for Test Call Section (Feature #4) - can be minimal for now */
+        .test-call-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eee;
+        }
+        #testCallStatus {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="shadow-lg rounded-4 bg-white p-5 mx-auto" style="max-width: 720px; width:100%; margin-top: 2rem; margin-bottom: 2rem;">
+        <header class="mb-4 text-center">
+            <h1 class="voicevite-title mb-3">VoiceVite</h1>
+            <h2 class="step-title">Preview & Edit Invitation Script</h2>
+        </header>
+        <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-3">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} shadow-sm py-2 px-3 mb-2">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% if event_details %}
+            <div class="event-summary-card">
+                <h5 class="border-bottom pb-2 mb-3">Event Summary</h5>
+                <p><strong>Host:</strong> {{ event_details.host_name }}</p>
+                <p><strong>Event Type:</strong> {{ event_details.event_type }}</p>
+                <p><strong>Date & Time:</strong> {{ event_details.event_date.strftime('%A, %B %d, %Y') if event_details.event_date }} at {{ event_details.event_time.strftime('%I:%M %p') if event_details.event_time }}</p>
+                <p><strong>Location:</strong> {{ event_details.location }}</p>
+                {% if event_details.background_music_url %}
+                    <p><strong>Background Music:</strong> {{ event_details.background_music_url | replace("URL_TO_GENTLE_MUSIC.mp3", "Gentle Instrumental") | replace("URL_TO_CELEBRATORY_MUSIC.mp3", "Celebratory Tune") }}</p>
+                {% endif %}
+                <!-- Add more details as needed -->
+            </div>
+            {% else %}
+            <div class="alert alert-warning">Event details not available.</div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('confirm_and_send_invitations') }}" id="scriptForm">
+                <input type="hidden" name="event_id" value="{{ event_id }}">
+                
+                <div class="mb-3">
+                    <label for="script_preview" class="form-label fs-5">Invitation Script</label>
+                    <p class="form-text text-muted">Review and edit the AI-generated script below. Ensure placeholders like <strong>{{GuestName}}</strong> (if used by your prompt strategy) are kept for personalization.</p>
+                    <textarea id="script_preview" name="final_script" rows="15" class="form-control form-control-lg rounded-3">{{ generated_script | safe }}</textarea>
+                </div>
+
+                <div class="d-flex justify-content-end align-items-center mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-3 px-5 shadow-sm" style="background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%); border: none;" id="confirmButton">
+                        Confirm & Send Invitations
+                    </button>
+                </div>
+            </form>
+
+            <!-- Placeholder for Feature #4: Test Call UI -->
+            <div class="test-call-section">
+                <h4 class="step-title fs-5 mb-3">Test Your Invitation Call</h4>
+                <div class="row g-3">
+                    <div class="col-md-7">
+                        <label for="test_phone_number" class="form-label">Your Phone Number (E.164)</label>
+                        <input type="tel" id="test_phone_number" name="test_phone_number" class="form-control form-control-lg rounded-3" placeholder="+1234567890">
+                    </div>
+                    <div class="col-md-5 d-flex align-items-end">
+                        <button type="button" id="send_test_call_btn" class="btn btn-outline-primary btn-lg w-100 rounded-3">
+                            Send Test Call
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                        </button>
+                    </div>
+                </div>
+                <div id="testCallStatus" class="mt-2"></div>
+            </div>
+            <!-- End of Feature #4 Placeholder -->
+        </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // JavaScript for Feature #4 (Test Call) will be added here later.
+        // For now, just basic form submission handling for the main script.
+        document.getElementById('scriptForm').addEventListener('submit', function() {
+            document.getElementById('confirmButton').disabled = true;
+            // You could add a spinner to the confirm button as well if desired.
+        });
+
+        // Placeholder for Test Call Button JS (Feature #4)
+        const testCallBtn = document.getElementById('send_test_call_btn');
+        const testPhoneNumberInput = document.getElementById('test_phone_number');
+        const scriptPreviewTextarea = document.getElementById('script_preview');
+        const eventIdInput = document.querySelector('input[name="event_id"]');
+        const testCallStatusDiv = document.getElementById('testCallStatus');
+        const testCallSpinner = testCallBtn.querySelector('.spinner-border');
+
+        testCallBtn.addEventListener('click', async function() {
+            const phoneNumber = testPhoneNumberInput.value;
+            const scriptContent = scriptPreviewTextarea.value;
+            const eventId = eventIdInput.value;
+
+            if (!phoneNumber) {
+                alert('Please enter a phone number for the test call.');
+                return;
+            }
+            if (!scriptContent) {
+                alert('Script content is empty. Cannot send a test call.');
+                return;
+            }
+            if (!eventId) {
+                alert('Event ID is missing. Cannot send a test call.');
+                return;
+            }
+
+            testCallBtn.disabled = true;
+            if(testCallSpinner) testCallSpinner.style.display = 'inline-block';
+            testCallStatusDiv.textContent = 'Initiating test call...';
+            testCallStatusDiv.className = 'alert alert-info';
+
+
+            try {
+                const response = await fetch("{{ url_for('send_test_call') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        test_phone_number: phoneNumber,
+                        script_content: scriptContent,
+                        event_id: eventId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    testCallStatusDiv.textContent = result.message || 'Test call initiated successfully to ' + phoneNumber;
+                    testCallStatusDiv.className = 'alert alert-success';
+                } else {
+                    testCallStatusDiv.textContent = 'Error: ' + (result.message || 'Failed to initiate test call.');
+                    testCallStatusDiv.className = 'alert alert-danger';
+                }
+            } catch (error) {
+                console.error('Test call error:', error);
+                testCallStatusDiv.textContent = 'Error: Could not reach server or other client-side error.';
+                testCallStatusDiv.className = 'alert alert-danger';
+            } finally {
+                testCallBtn.disabled = false;
+                if(testCallSpinner) testCallSpinner.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
