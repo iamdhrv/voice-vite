@@ -259,10 +259,21 @@ def voice_training():
 
 @app.route('/event-details-step2', methods=['GET', 'POST'])
 def event_details_step2():
-    """Handles Step 3: Event Details (Part 2) and Submission."""
+    # Add these lines for debugging session
+    logger.debug(f"Entering event_details_step2. Method: {request.method}")
+    logger.debug(f"Session event_details_part1: {session.get('event_details_part1')}")
+    logger.debug(f"Session voice_choice: {session.get('voice_choice')}")
+    logger.debug(f"Full session contents: {dict(session)}") # Log all session contents
+
+    # Existing logic starts here
     if 'event_details_part1' not in session or 'voice_choice' not in session:
-        flash('Please complete previous steps first.', 'error')
+        flash('Please complete previous steps first. Session data missing.', 'error') # Added more specific flash
+        logger.warning("Session data ('event_details_part1' or 'voice_choice') missing, redirecting to index.")
         return redirect(url_for('index'))
+    
+    """Handles Step 3: Event Details (Part 2) and Submission."""
+    # Note: The original docstring is moved down a bit to accommodate the new logging,
+    # but its purpose remains for the function as a whole.
 
     if request.method == 'POST':
         location = request.form.get('location')
