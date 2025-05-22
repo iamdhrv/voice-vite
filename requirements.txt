@@ -14,3 +14,4 @@ pytest
 
 # Production WSGI Server (optional for initial setup, but good to list)
 gunicorn
+vapi

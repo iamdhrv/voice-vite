@@ -359,12 +359,13 @@
 
         const eventForm = document.getElementById('eventForm');
         if(eventForm) {
-            eventForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
+            eventForm.addEventListener('submit', function(e) { // Removed async
+                // No e.preventDefault() here at the top
 
                 const guestInputMethodRadio = document.querySelector('input.card-radio:checked');
                 if (!guestInputMethodRadio) {
                     alert('Please select a guest input method (Manual Entry or CSV Upload).');
+                    e.preventDefault(); // Prevent submission
                     return;
                 }
                 const guestInputMethod = guestInputMethodRadio.value;
@@ -376,73 +377,45 @@
                     
                     if (guestNameInputs.length === 0 && guestEntriesContainer.children.length > 0) { 
                          alert('Please add guest details or use CSV upload.');
+                         e.preventDefault(); // Prevent submission
                          return;
                     }
                     if (guestEntriesContainer.children.length === 0 && guestNameInputs.length === 0 ) {
                         alert('Please add at least one guest for manual entry or choose CSV Upload.');
+                        e.preventDefault(); // Prevent submission
                         return;
                     }
 
                     for (let i = 0; i < guestNameInputs.length; i++) {
                         if (!guestNameInputs[i].value || !guestPhoneInputs[i].value) {
                             alert('Please fill in all guest names and phone numbers for manual entries.');
+                            e.preventDefault(); // Prevent submission
                             return;
                         }
                         if (!guestPhoneInputs[i].value.match(/^\+[1-9]\d{1,14}$/)) {
                             alert('Phone numbers must be in E.164 format (e.g., +919876543210). Please correct entry: ' + guestPhoneInputs[i].value);
+                            e.preventDefault(); // Prevent submission
                             return;
                         }
                     }
-                } else { 
+                } else { // guestInputMethod === 'csv'
                     const csvInput = document.getElementById('guest_list_file');
                     if (csvInput && !csvInput.files.length && csvInput.hasAttribute('required')) {
                         alert('Please upload a CSV file.');
+                        e.preventDefault(); // Prevent submission
                         return;
                     }
                 }
 
+                // If all validations pass, the form will submit normally.
+                // Show spinner and disable button to prevent double submission.
                 const submitButton = document.getElementById('submitButton');
                 const submitSpinner = document.getElementById('submitSpinner');
                 if(submitButton) submitButton.disabled = true;
                 if(submitSpinner) submitSpinner.style.display = 'inline-block';
 
-                const formData = new FormData(this);
-
-                try {
-                    const response = await fetch(this.action, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (response.ok) {
-                        if (response.redirected) {
-                            window.location.href = response.url; 
-                        } else {
-                            const contentType = response.headers.get("content-type");
-                            if (contentType && contentType.indexOf("application/json") !== -1) {
-                                const responseData = await response.json();
-                                if (responseData.redirect_url) {
-                                    window.location.href = responseData.redirect_url;
-                                } else {
-                                    alert(responseData.message || 'Operation successful, but no redirect URL provided.');
-                                }
-                            } else {
-                                console.log("Server responded with non-JSON, non-redirect on POST success. Assuming success and redirecting to index.");
-                                alert('Event created successfully! Redirecting...'); 
-                                window.location.href = "{{ url_for('index') }}"; 
-                            }
-                        }
-                    } else {
-                        const errorText = await response.text();
-                        alert('Error: ' + (errorText || 'Failed to process request. Status: ' + response.status));
-                    }
-                } catch (err) {
-                    console.error('Form submission error:', err);
-                    alert('Error submitting form: ' + err.message);
-                } finally { // Ensure this block is present to re-enable button and hide spinner
-                    if(submitButton) submitButton.disabled = false;
-                    if(submitSpinner) submitSpinner.style.display = 'none';
-                }
+                // No e.preventDefault() here means standard form submission will proceed.
+                // The fetch call and related try/catch/finally block are removed.
             });
         }
     });
