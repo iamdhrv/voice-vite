@@ -3,6 +3,9 @@ python-dotenv
 requests
 elevenlabs
 pyairtable
+psycopg2-binary
+SQLAlchemy
+Flask-SQLAlchemy
 # For Grok or other LLMs, a specific client might be needed, or 'requests' for generic API calls.
 # Add specific LLM client if known, e.g., openai, anthropic
 

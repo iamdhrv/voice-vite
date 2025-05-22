@@ -36,6 +36,10 @@ class Config:
     # Voice Cloning settings
     VOICE_TRAINING_DURATION = 30 # seconds
 
+    # Database Configuration
+    # Example for PostgreSQL: 'postgresql://user:password@host:port/database'
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+
     # Ensure essential configurations are present
     if not SECRET_KEY:
         raise ValueError("No FLASK_SECRET_KEY set for Flask application. Please set it in .env or as an environment variable.")
@@ -47,6 +51,8 @@ class Config:
         print("Warning: AIRTABLE_PERSONAL_ACCESS_TOKEN or AIRTABLE_BASE_ID is not set. Airtable integration will not work.")
     if not LMNT_API_KEY:
         print("Warning: LMNT_API_KEY is not set. LMNT voice cloning integration will not work.")
+    if not SQLALCHEMY_DATABASE_URI:
+        print("Warning: DATABASE_URL is not set. Database integration will not work.")
 
 # Create an instance of the config
 config = Config()
@@ -65,3 +71,4 @@ if __name__ == '__main__':
     print(f"Upload Folder: {config.UPLOAD_FOLDER}")
     os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
     print(f"Upload folder '{config.UPLOAD_FOLDER}' ensured.")
+    print(f"SQLAlchemy Database URI: {'Set' if config.SQLALCHEMY_DATABASE_URI else 'Not set'}")
