@@ -18,7 +18,7 @@ class VapiHandler:
         }
     
     def make_outbound_call(self, phone_number: str, assistant_id: str, guest_name: str, 
-                          event_details: dict, guest_id_airtable: str, voice_choice: str = 'male') -> Optional[str]:
+                          event_details: dict, guest_id_db: int, voice_choice: str = 'male') -> Optional[str]:
         """
         Initiates an outbound call using the Vapi API with event variables and a custom first message.
         
@@ -27,7 +27,7 @@ class VapiHandler:
             assistant_id: The ID of the Vapi assistant to use
             guest_name: The name of the guest being called
             event_details: Dictionary containing event information
-            guest_id_airtable: The Airtable ID of the guest
+            guest_id_db: The PostgreSQL database ID of the guest
             voice_choice: The voice type ('male', 'female', or 'custom')
             
         Note:
@@ -170,8 +170,8 @@ class VapiHandler:
                     "voice": voice_config
                 },
                 "metadata": {
-                    "guestId": guest_id_airtable,
-                    "eventId": event_details.get("eventId"),
+                    "guestId": str(guest_id_db), # Use new param, ensure string
+                    "eventId": str(event_details.get("eventId")), # Ensure string
                     "voiceSampleId": event_details.get("voiceSampleId")
                 }
             }
