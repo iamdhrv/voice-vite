@@ -122,21 +122,23 @@
         const testCallBtn = document.getElementById('send_test_call_btn');
         const testPhoneNumberInput = document.getElementById('test_phone_number');
         const scriptPreviewTextarea = document.getElementById('script_preview');
-        const eventIdInput = document.querySelector('input[name="event_id"]');
+        const eventIdInput = document.querySelector('input[name="event_id"]'); // Correct selector
         const testCallStatusDiv = document.getElementById('testCallStatus');
-        const testCallSpinner = testCallBtn.querySelector('.spinner-border');
+        const testCallSpinner = testCallBtn.querySelector('.spinner-border'); // Assuming spinner is inside button
 
         testCallBtn.addEventListener('click', async function() {
             const phoneNumber = testPhoneNumberInput.value;
             const scriptContent = scriptPreviewTextarea.value;
-            const eventId = eventIdInput.value;
+            const eventId = eventIdInput.value; // This should work
 
-            if (!phoneNumber) {
-                alert('Please enter a phone number for the test call.');
+            if (!phoneNumber || !phoneNumber.match(/^\+[1-9]\d{1,14}$/)) { // Basic E.164 validation
+                alert('Please enter a valid phone number in E.164 format (e.g., +1234567890).');
+                testPhoneNumberInput.focus();
                 return;
             }
-            if (!scriptContent) {
+            if (!scriptContent.trim()) {
                 alert('Script content is empty. Cannot send a test call.');
+                scriptPreviewTextarea.focus();
                 return;
             }
             if (!eventId) {
@@ -146,15 +148,15 @@
 
             testCallBtn.disabled = true;
             if(testCallSpinner) testCallSpinner.style.display = 'inline-block';
-            testCallStatusDiv.textContent = 'Initiating test call...';
-            testCallStatusDiv.className = 'alert alert-info';
-
+            testCallStatusDiv.textContent = 'Initiating test call to ' + phoneNumber + '...';
+            testCallStatusDiv.className = 'alert alert-info p-2 mt-2'; // Using bootstrap alert classes
 
             try {
-                const response = await fetch("{{ url_for('send_test_call') }}", {
+                const response = await fetch("{{ url_for('send_test_call') }}", { // Ensure url_for is correctly rendered by Flask
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        // Add CSRF token header if Flask-WTF or similar is used for CSRF protection globally
                     },
                     body: JSON.stringify({
                         test_phone_number: phoneNumber,
@@ -163,19 +165,19 @@
                     })
                 });
 
-                const result = await response.json();
+                const result = await response.json(); // Assuming backend always returns JSON
 
-                if (response.ok && result.success) {
-                    testCallStatusDiv.textContent = result.message || 'Test call initiated successfully to ' + phoneNumber;
-                    testCallStatusDiv.className = 'alert alert-success';
+                if (response.ok && result.success) { // Assuming backend sends {success: true/false, message: "..."}
+                    testCallStatusDiv.textContent = result.message || 'Test call initiated successfully!';
+                    testCallStatusDiv.className = 'alert alert-success p-2 mt-2';
                 } else {
-                    testCallStatusDiv.textContent = 'Error: ' + (result.message || 'Failed to initiate test call.');
-                    testCallStatusDiv.className = 'alert alert-danger';
+                    testCallStatusDiv.textContent = 'Error: ' + (result.message || 'Failed to initiate test call. Status: ' + response.status);
+                    testCallStatusDiv.className = 'alert alert-danger p-2 mt-2';
                 }
             } catch (error) {
-                console.error('Test call error:', error);
-                testCallStatusDiv.textContent = 'Error: Could not reach server or other client-side error.';
-                testCallStatusDiv.className = 'alert alert-danger';
+                console.error('Test call fetch error:', error);
+                testCallStatusDiv.textContent = 'Error: Could not reach server or client-side error during test call.';
+                testCallStatusDiv.className = 'alert alert-danger p-2 mt-2';
             } finally {
                 testCallBtn.disabled = false;
                 if(testCallSpinner) testCallSpinner.style.display = 'none';

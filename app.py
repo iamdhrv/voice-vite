@@ -665,6 +665,54 @@ def dashboard():
             
     return render_template('dashboard.html', events_data=events_data_for_template)
 
+@app.route('/send-test-call', methods=['POST'])
+def send_test_call():
+    if not request.is_json:
+        return jsonify({'success': False, 'message': 'Invalid request: Content-Type must be application/json.'}), 415
+
+    data = request.get_json()
+    test_phone_number = data.get('test_phone_number')
+    script_content = data.get('script_content')
+    event_id_str = data.get('event_id')
+
+    if not all([test_phone_number, script_content, event_id_str]):
+        return jsonify({'success': False, 'message': 'Missing required fields (test_phone_number, script_content, event_id).'}), 400
+
+    try:
+        event_id = int(event_id_str)
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Invalid event_id format.'}), 400
+
+    event = postgres_client.get_event_by_id(event_id)
+    if not event:
+        return jsonify({'success': False, 'message': f'Event with ID {event_id} not found.'}), 404
+
+    # Prepare event_config for the test call handler
+    event_config_for_test_call = {
+        'voice_sample_id': event.voice_sample_id,
+        'background_music_url': event.background_music_url,
+        'vapi_assistant_id': config.VAPI_ASSISTANT_ID, # Using global VAPI_ASSISTANT_ID from config
+        'host_name': event.host_name # Needed for {{HostName}} if user script contains it
+        # Add any other details from 'event' object that make_single_test_call might need
+        # to substitute placeholders in the script_content, e.g. {{HostName}}
+    }
+
+    # Call the handler function (to be created in Step 18)
+    # For now, since the handler function doesn't exist, we'll use the placeholder call/response from the task description.
+    # This will be replaced by the actual call in Step 18.
+    
+    # Actual call to the VapiHandler:
+    test_call_successful, test_call_message = vapi_handler.make_single_test_call(
+        phone_number=test_phone_number,
+        script_content=script_content,
+        event_config=event_config_for_test_call 
+    )
+
+    if test_call_successful:
+        return jsonify({'success': True, 'message': test_call_message or 'Test call initiated successfully.'})
+    else:
+        return jsonify({'success': False, 'message': test_call_message or 'Failed to initiate test call.'}), 500
+
 def create_db_tables():
     """Creates database tables if they don't already exist."""
     with app.app_context():

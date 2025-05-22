@@ -223,3 +223,58 @@ class VapiHandler:
         except FileNotFoundError as e:
             print(f"Error loading prompt file: {e}")
             return None
+
+    def make_single_test_call(self, phone_number: str, script_content: str, event_config: dict) -> tuple[bool, str]:
+        try:
+            host_name = event_config.get('host_name', 'Your Host')
+            guest_name_for_test = "Test User" 
+
+            personalized_script = script_content.replace("{{HostName}}", host_name)
+            personalized_script = personalized_script.replace("{{GuestName}}", guest_name_for_test)
+            
+            test_first_message = f"This is a test call from VoiceVite on behalf of {host_name}. We will now play the invitation script for you."
+
+            voice_sample_id = event_config.get('voice_sample_id')
+            voice_config_payload = {}
+            default_male_vapi_voice = 'JBFqnCBsd6RMkjVDRZzb' # Standard Vapi male voice
+            default_female_vapi_voice = 'XrExE9yKIg1WjnnlVkGX' # Standard Vapi female voice
+
+            if voice_sample_id == default_male_vapi_voice or voice_sample_id == default_female_vapi_voice:
+                voice_config_payload = {"provider": "11labs", "voiceId": voice_sample_id, "model": "eleven_multilingual_v2"}
+            elif voice_sample_id: 
+                 voice_config_payload = {"provider": "lmnt", "voiceId": voice_sample_id}
+            else: 
+                voice_config_payload = {"provider": "11labs", "voiceId": default_male_vapi_voice, "model": "eleven_multilingual_v2"}
+
+            payload = {
+                "name": f"Test Call (Host: {host_name})",
+                "assistantId": event_config.get('vapi_assistant_id'),
+                "phoneNumberId": "bbb6faa5-8983-4411-b7a1-cd4f159fc4ae", 
+                "customers": [{"number": phone_number, "name": guest_name_for_test, "numberE164CheckEnabled": False}],
+                "assistantOverrides": {
+                    "firstMessage": test_first_message,
+                    "model": {
+                        "provider": "openai", "model": "chatgpt-4o-latest", # Ensure this model is desired
+                        "messages": [{"role": "system", "content": personalized_script}]
+                    },
+                    "voice": voice_config_payload
+                },
+                "metadata": {"call_type": "test_call", "description": "Test call from preview page"}
+            }
+
+            background_music_url = event_config.get("background_music_url")
+            if background_music_url:
+                payload["assistantOverrides"]["backgroundSound"] = {"url": background_music_url, "volume": 0.2, "loop": "false"}
+
+            response = requests.post(f"{self.base_url}/call", headers=self.headers, json=payload)
+            response.raise_for_status() 
+            
+            call_data = response.json()
+            if 'results' in call_data and call_data['results'] and len(call_data['results']) > 0 and call_data['results'][0].get('id'):
+                return True, "Test call initiated successfully."
+            else:
+                return False, "Test call initiated but VAPI response did not confirm call ID."
+        except requests.exceptions.RequestException as e:
+            return False, f"API request error: {str(e)}"
+        except Exception as e:
+            return False, f"Unexpected error during test call: {str(e)}"
