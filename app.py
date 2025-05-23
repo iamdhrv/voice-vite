@@ -9,6 +9,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from werkzeug.utils import secure_filename
 import logging
 import sys # For CLI table creation
+import re
 
 from config import config
 # from src.airtable_integration.client import AirtableClient # Deprecated
@@ -326,9 +327,10 @@ def event_details_step2():
             flash('Invalid date or time format. Please use YYYY-MM-DD for dates and HH:MM for time.', 'error')
             return redirect(url_for('event_details_step2'))
 
-        # Handle CSV file saving if provided, but no guest processing here
+        # Handle CSV file saving if provided, but also store manual guests if in manual mode
         guest_input_method = request.form.get('guest_input_method')
         csv_path_to_save = None
+        manual_guests_data = []
         if guest_input_method == 'csv':
             if 'guest_list' in request.files and request.files['guest_list'].filename != '':
                 file = request.files['guest_list']
@@ -344,13 +346,26 @@ def event_details_step2():
                         flash('Error saving guest list CSV file, but proceeding.', 'warning')
                 else:
                     flash('Invalid file type for guest list. Only CSV allowed. Proceeding without CSV.', 'warning')
-        
+        elif guest_input_method == 'manual':
+            manual_guest_names = request.form.getlist('guest_name[]')
+            manual_guest_phones = request.form.getlist('guest_phone[]')
+            for name, phone in zip(manual_guest_names, manual_guest_phones):
+                if name.strip() and phone.strip():
+                    manual_guests_data.append({'guest_name': name.strip(), 'phone_number': phone.strip()})
+
         created_event = postgres_client.create_event(db_event_data)
         if not created_event:
             flash('Failed to create event draft in database.', 'error')
             return redirect(url_for('event_details_step2'))
-        
-        event_id = created_event.id 
+        event_id = created_event.id
+
+        # Store manual guests in DB if present
+        if guest_input_method == 'manual' and manual_guests_data:
+            for guest_data in manual_guests_data:
+                created_guest = postgres_client.create_guest(event_id, guest_data)
+                if not created_guest:
+                    logger.error(f"Failed to add manual guest: {guest_data}")
+            logger.info(f"Added {len(manual_guests_data)} manual guests for event {event_id}.")
 
         # Fetch the full event object from DB to pass to script generator and template
         event_object_from_db = postgres_client.get_event_by_id(event_id)
@@ -411,31 +426,45 @@ def confirm_and_send_invitations():
     #     flash(f'Event with ID {event_id} not found after update.', 'error')
     #     return redirect(url_for('dashboard'))
 
-    # --- 3. Process Guest List (from CSV if path exists) ---
+    # --- 3. Process Guest List (from CSV if path exists, else manual) ---
     guests_to_call = []
-    if event.guest_list_csv_path:
-        try:
-            parsed_guests_from_csv = parse_csv_to_guests(event.guest_list_csv_path)
-            if parsed_guests_from_csv:
-                db_guests_data_for_batch = [{'guest_name': g['GuestName'], 'phone_number': g['PhoneNumber']} for g in parsed_guests_from_csv]
-                created_guest_objects = postgres_client.add_guests_batch(event_id, db_guests_data_for_batch)
-                if created_guest_objects:
-                    guests_to_call.extend(created_guest_objects)
-                    logger.info(f"Added {len(created_guest_objects)} guests from CSV for event {event_id}.")
+    try:
+        if event.guest_list_csv_path:
+            try:
+                parsed_guests_from_csv = parse_csv_to_guests(event.guest_list_csv_path)
+                if parsed_guests_from_csv:
+                    db_guests_data_for_batch = [{'guest_name': g['GuestName'], 'phone_number': g['PhoneNumber']} for g in parsed_guests_from_csv]
+                    created_guest_objects = postgres_client.add_guests_batch(event_id, db_guests_data_for_batch)
+                    if created_guest_objects:
+                        guests_to_call.extend(created_guest_objects)
+                        logger.info(f"Added {len(created_guest_objects)} guests from CSV for event {event_id}.")
+                    else:
+                        logger.warning(f"postgres_client.add_guests_batch did not return guests for event {event_id} from CSV: {event.guest_list_csv_path}")
+                        flash('Could not process guests from CSV file (add_guests_batch failed).', 'warning')
                 else:
-                    # This means add_guests_batch returned None or empty list
-                    logger.warning(f"postgres_client.add_guests_batch did not return guests for event {event_id} from CSV: {event.guest_list_csv_path}")
-                    flash('Could not process guests from CSV file (add_guests_batch failed).', 'warning')
+                    logger.info(f"No valid guests found in CSV file: {event.guest_list_csv_path} for event {event_id}")
+                    flash('CSV file specified but no valid guests found in it.', 'warning')
+            except FileNotFoundError:
+                logger.error(f"Guest CSV file not found at path: {event.guest_list_csv_path} for event {event_id}")
+                flash('Guest list CSV file not found. Cannot process guests.', 'error')
+            except Exception as e:
+                logger.error(f"Error processing CSV {event.guest_list_csv_path} for event {event_id}: {e}")
+                flash(f'Error processing guest CSV file: {str(e)}', 'error')
+        else:
+            # Try to fetch guests from DB if no CSV is present
+            guests_from_db = postgres_client.get_guests_for_event(event_id)
+            logger.debug(f"Fetched {len(guests_from_db)} guests from DB for event {event_id}.")
+            if guests_from_db:
+                guests_to_call.extend(guests_from_db)
+                logger.info(f"Fetched {len(guests_from_db)} guests from DB for event {event_id}.")
             else:
-                logger.info(f"No valid guests found in CSV file: {event.guest_list_csv_path} for event {event_id}")
-                flash('CSV file specified but no valid guests found in it.', 'warning')
-        except FileNotFoundError:
-            logger.error(f"Guest CSV file not found at path: {event.guest_list_csv_path} for event {event_id}")
-            flash('Guest list CSV file not found. Cannot process guests.', 'error')
-        except Exception as e: # Catch other parsing or processing errors
-            logger.error(f"Error processing CSV {event.guest_list_csv_path} for event {event_id}: {e}")
-            flash(f'Error processing guest CSV file: {str(e)}', 'error')
-    
+                logger.warning(f"No guests found in DB for event {event_id}.")
+                flash('No guests found for this event in the database.', 'warning')
+
+    except Exception as e:
+        logger.error(f"Unexpected error processing guests for event {event_id}: {e}")
+        flash(f'Unexpected error processing guests: {str(e)}', 'error')
+
     # --- 4. Initiate Calls ---
     if not guests_to_call:
         flash('No guests found to call for this event. Event status set, but no calls initiated.', 'info')
@@ -467,27 +496,26 @@ def confirm_and_send_invitations():
         elif event.voice_sample_id == 'XrExE9yKIg1WjnnlVkGX': 
             voice_choice = 'female'
 
-        call_count = 0
-        for guest_obj in guests_to_call:
-            initiate_vapi_call( 
-                event_id=event.id, 
-                guest_id=guest_obj.id, 
-                guest_name=guest_obj.guest_name, 
-                phone_number=guest_obj.phone_number, 
-                voice_sample_id=event.voice_sample_id, 
-                event_details_for_vapi=event_details_for_vapi, # Does NOT contain final_script for this call
-                final_script=final_script, # Pass the final_script from the form
-                voice_choice=voice_choice
-            )
-            call_count += 1
-        
-        if call_count > 0:
-            flash(f'{call_count} guest calls initiated successfully based on your final script!', 'success')
+        # --- BULK CALL LOGIC ---
+        bulk_call_response = vapi_handler.make_bulk_outbound_call(
+            guests=guests_to_call,
+            assistant_id=config.VAPI_ASSISTANT_ID,
+            event_details=event_details_for_vapi,
+            final_script=final_script,
+            voice_choice=voice_choice
+        )
+        if bulk_call_response:
+            # Optionally update all guests as 'Called - Initiated' (or parse response for per-guest status)
+            for guest_obj in guests_to_call:
+                postgres_client.update_guest_call_status(guest_obj.id, 'Called - Initiated')
+            flash(f"{len(guests_to_call)} guest calls initiated successfully in a single bulk request!", 'success')
             postgres_client.update_event_status(event_id, "Calls Initiated") 
         else:
-            flash('Calls were intended, but none were initiated due to an issue.', 'warning')
-            # Keep status as 'processing' or set to a specific error status if needed
-            # postgres_client.update_event_status(event_id, "Processed - Call Error") # Example if specific status needed
+            flash('Bulk call API failed. No calls were initiated.', 'warning')
+            # Optionally update guest statuses as failed
+            for guest_obj in guests_to_call:
+                postgres_client.update_guest_call_status(guest_obj.id, 'Failed - API Error')
+        # --- END BULK CALL LOGIC ---
 
     # --- 5. Redirect ---
     return redirect(url_for('dashboard'))
@@ -591,13 +619,22 @@ def webhook():
     if event_type == 'status-update': 
         status = message.get('status')
         call_id_vapi = message.get('callId') 
+        call_type = message.get('call', {}).get('type')
+        if call_type == 'webCall':
+            logger.info(f"Ignoring webhook for webCall type (test call): {call_id_vapi}")
+            return jsonify({'status': 'Ignored webCall'}), 200
         logger.debug(f"Webhook: Call status-update for Vapi Call ID {call_id_vapi}: {status}")
-        if status == 'failed':
+        if status == 'ended':
             error_message = message.get('error', {}).get('message', 'Unknown Vapi error from status-update')
             logger.error(f"Webhook: Vapi Call ID {call_id_vapi} failed. Reason: {error_message}")
             call_details = message.get('call', {})
-            metadata = call_details.get('metadata', {})
-            guest_id_str = metadata.get('guestId')
+            # Extract guestId from call.customer.name (e.g., 'John Doe [4]')
+            customer = call_details.get('customer', {})
+            customer_name = customer.get('name', '')
+            guest_id_str = None
+            match = re.search(r'\[(\d+)\]$', customer_name)
+            if match:
+                guest_id_str = match.group(1)
             if guest_id_str:
                 try:
                     guest_id = int(guest_id_str)
@@ -609,22 +646,30 @@ def webhook():
 
     elif event_type == 'end-of-call-report':
         call = message.get('call', {}) 
-        analysis = message.get('analysis', {})
-        metadata = call.get('metadata') if call.get('metadata') is not None else {}
-        guest_id_str = metadata.get('guestId')
+        call_type = call.get('type')
+        if call_type == 'webCall':
+            logger.info(f"Ignoring end-of-call-report for webCall type (test call).")
+            return jsonify({'status': 'Ignored webCall'}), 200
+        # Extract guestId from call.customer.name (e.g., 'John Doe [4]')
+        customer = call.get('customer', {})
+        customer_name = customer.get('name', '')
+        guest_id_str = None
+        match = re.search(r'\[(\d+)\]$', customer_name)
+        if match:
+            guest_id_str = match.group(1)
+        # eventId can still come from metadata if present
+        metadata = call.get('metadata') if call.get('metadata') is not None else message.get('metadata', {})
         event_id_str = metadata.get('eventId')
-
         if not guest_id_str or not event_id_str:
-            logger.error(f"Webhook end-of-call-report missing guestId or eventId in metadata: {metadata}")
+            logger.error(f"Webhook end-of-call-report missing guestId (in customer.name) or eventId (in metadata): customer_name={customer_name}, metadata={metadata}")
             return jsonify({'status': 'Error', 'message': 'Missing guestId or eventId'}), 400
-        
         try:
             guest_id = int(guest_id_str)
             event_id = int(event_id_str)
         except ValueError:
             logger.error(f"Webhook end-of-call-report guestId or eventId is not valid: guestId='{guest_id_str}', eventId='{event_id_str}'")
             return jsonify({'status': 'Error', 'message': 'Invalid guestId or eventId format'}), 400
-
+        analysis = message.get('analysis', {})
         structured_data = analysis.get('structuredData', {})
         summary = analysis.get('summary', '') 
 
@@ -682,12 +727,11 @@ def send_test_call():
         return jsonify({'success': False, 'message': 'Invalid request: Content-Type must be application/json.'}), 415
 
     data = request.get_json()
-    test_phone_number = data.get('test_phone_number')
     script_content = data.get('script_content')
     event_id_str = data.get('event_id')
 
-    if not all([test_phone_number, script_content, event_id_str]):
-        return jsonify({'success': False, 'message': 'Missing required fields (test_phone_number, script_content, event_id).'}), 400
+    if not all([script_content, event_id_str]):
+        return jsonify({'success': False, 'message': 'Missing required fields (script_content, event_id).'}), 400
 
     try:
         event_id = int(event_id_str)
@@ -705,24 +749,27 @@ def send_test_call():
         'vapi_assistant_id': config.VAPI_ASSISTANT_ID, # Using global VAPI_ASSISTANT_ID from config
         'host_name': event.host_name # Needed for {{HostName}} if user script contains it
         # Add any other details from 'event' object that make_single_test_call might need
-        # to substitute placeholders in the script_content, e.g. {{HostName}}
     }
 
-    # Call the handler function (to be created in Step 18)
-    # For now, since the handler function doesn't exist, we'll use the placeholder call/response from the task description.
-    # This will be replaced by the actual call in Step 18.
-    
-    # Actual call to the VapiHandler:
+    # Call the handler function (updated signature)
     test_call_successful, test_call_message = vapi_handler.make_single_test_call(
-        phone_number=test_phone_number,
         script_content=script_content,
         event_config=event_config_for_test_call 
     )
 
     if test_call_successful:
-        return jsonify({'success': True, 'message': test_call_message or 'Test call initiated successfully.'})
+        return jsonify({'success': True, 'message': test_call_message})
     else:
-        return jsonify({'success': False, 'message': test_call_message or 'Failed to initiate test call.'}), 500
+        return jsonify({'success': False, 'message': test_call_message}), 500
+
+@app.route('/end-test-call', methods=['POST'])
+def end_test_call():
+    # No call_id needed for web test calls
+    success, message = vapi_handler.end_test_call()
+    if success:
+        return jsonify({'success': True, 'message': message})
+    else:
+        return jsonify({'success': False, 'message': message}), 500
 
 def create_db_tables():
     """Creates database tables if they don't already exist."""

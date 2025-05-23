@@ -38,6 +38,21 @@
             margin-top: 0.5rem;
             font-size: 0.9rem;
         }
+        /* Waveform bars for test call */
+        #classic-waveform {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 3px;
+            height: 48px;
+            min-width: 180px;
+        }
+        .wave-bar {
+            width: 6px;
+            background: #6366f1;
+            border-radius: 3px;
+            transition: height 0.2s;
+        }
     </style>
 </head>
 <body>
@@ -89,103 +104,126 @@
                 </div>
             </form>
 
-            <!-- Feature #4: Test Call UI -->
+            <!-- Feature #4: Test Call UI (Vapi Browser SDK, Classic Waveform, Start/End Call) -->
             <div class="test-call-section card mt-4 shadow-sm">
-                <div class="card-body">
+                <div class="card-body text-center">
                     <h5 class="card-title mb-3">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-telephone-outbound-fill me-2" viewBox="0 0 16 16">
                             <path fill-rule="evenodd" d="M1.885.511a1.745 1.745 0 0 1 2.61.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511zM11 .5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V1.707l-4.146 4.147a.5.5 0 0 1-.708-.708L14.293 1H11.5a.5.5 0 0 1-.5-.5z"/>
                         </svg>
                         Test Your Invitation Call
                     </h5>
-                    <div class="mb-3">
-                        <label for="test_phone_number" class="form-label">Your Phone Number (E.164 format)</label>
-                        <input type="tel" id="test_phone_number" name="test_phone_number" class="form-control form-control-lg rounded-3" placeholder="+1234567890">
+                    <!-- Classic Waveform Animation -->
+                    <div id="classic-waveform" class="d-flex justify-content-center align-items-end mb-3" style="height: 48px; gap: 3px; min-width: 180px;">
+                        <!-- Bars will be animated by JS -->
                     </div>
-                    <button type="button" id="send_test_call_btn" class="btn btn-success btn-lg w-100 rounded-3 d-flex align-items-center justify-content-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-play-circle-fill me-2" viewBox="0 0 16 16">
-                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM6.79 5.093A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814l-3.5-2.5z"/>
-                        </svg>
-                        Send Test Call
-                        <span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true" style="display: none;"></span>
-                    </button>
-                    <div id="testCallStatus" class="mt-3"></div> <!-- Status message area -->
+                    <div class="mt-3">
+                        <button type="button" id="start_test_call_btn" class="btn btn-success btn-lg rounded-3 px-5 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-play-circle-fill me-2" viewBox="0 0 16 16">
+                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM6.79 5.093A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814l-3.5-2.5z"/>
+                            </svg>
+                            Start Test Call
+                        </button>
+                        <button type="button" id="end_test_call_btn" class="btn btn-danger btn-lg rounded-3 px-5 shadow-sm" style="display:none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-stop-circle-fill me-2" viewBox="0 0 16 16">
+                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5 5.5A.5.5 0 0 1 5.5 5h5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-.5.5h-5a.5.5 0 0 1-.5-.5v-5z"/>
+                            </svg>
+                            End Call
+                        </button>
+                        <span class="spinner-border spinner-border-sm ms-2" id="test_call_spinner" role="status" aria-hidden="true" style="display: none;"></span>
+                    </div>
+                    <div id="testCallStatus" class="mt-3"></div>
                 </div>
             </div>
         </main>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // JavaScript for Feature #4 (Test Call) will be added here later.
-        // For now, just basic form submission handling for the main script.
-        document.getElementById('scriptForm').addEventListener('submit', function() {
-            document.getElementById('confirmButton').disabled = true;
-            // You could add a spinner to the confirm button as well if desired.
-        });
-
-        // Placeholder for Test Call Button JS (Feature #4)
-        const testCallBtn = document.getElementById('send_test_call_btn');
-        const testPhoneNumberInput = document.getElementById('test_phone_number');
-        const scriptPreviewTextarea = document.getElementById('script_preview');
-        const eventIdInput = document.querySelector('input[name="event_id"]'); // Correct selector
+        // Classic waveform animation
+        const waveform = document.getElementById('classic-waveform');
+        function renderWaveformBars() {
+            waveform.innerHTML = '';
+            for (let i = 0; i < 24; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'wave-bar';
+                bar.style.height = (16 + Math.random() * 32) + 'px';
+                waveform.appendChild(bar);
+            }
+        }
+        function animateWaveformBars() {
+            const bars = waveform.querySelectorAll('.wave-bar');
+            bars.forEach(bar => {
+                bar.style.height = (16 + Math.random() * 32) + 'px';
+            });
+        }
+        renderWaveformBars();
+        setInterval(animateWaveformBars, 200);
+        // Backend-driven test call logic
+        let testCallId = null;
+        const startBtn = document.getElementById('start_test_call_btn');
+        const endBtn = document.getElementById('end_test_call_btn');
+        const spinner = document.getElementById('test_call_spinner');
         const testCallStatusDiv = document.getElementById('testCallStatus');
-        const testCallSpinner = testCallBtn.querySelector('.spinner-border'); // Assuming spinner is inside button
-
-        testCallBtn.addEventListener('click', async function() {
-            const phoneNumber = testPhoneNumberInput.value;
+        const scriptPreviewTextarea = document.getElementById('script_preview');
+        const eventIdInput = document.querySelector('input[name="event_id"]');
+        function showStatus(msg, type = 'info') {
+            testCallStatusDiv.textContent = msg;
+            testCallStatusDiv.className = 'alert alert-' + (type === 'success' ? 'success' : (type === 'error' ? 'danger' : 'info')) + ' p-2 mt-2';
+        }
+        startBtn.addEventListener('click', async function() {
+            spinner.style.display = 'inline-block';
+            startBtn.disabled = true;
+            showStatus('Initiating test call...');
             const scriptContent = scriptPreviewTextarea.value;
-            const eventId = eventIdInput.value; // This should work
-
-            if (!phoneNumber || !phoneNumber.match(/^\+[1-9]\d{1,14}$/)) { // Basic E.164 validation
-                alert('Please enter a valid phone number in E.164 format (e.g., +1234567890).');
-                testPhoneNumberInput.focus();
+            const eventId = eventIdInput ? eventIdInput.value : null;
+            if (!eventId || !scriptContent.trim()) {
+                showStatus('Script and Event ID are required for test call.', 'error');
+                spinner.style.display = 'none';
+                startBtn.disabled = false;
                 return;
             }
-            if (!scriptContent.trim()) {
-                alert('Script content is empty. Cannot send a test call.');
-                scriptPreviewTextarea.focus();
-                return;
-            }
-            if (!eventId) {
-                alert('Event ID is missing. Cannot send a test call.');
-                return;
-            }
-
-            testCallBtn.disabled = true;
-            if(testCallSpinner) testCallSpinner.style.display = 'inline-block';
-            testCallStatusDiv.textContent = 'Initiating test call to ' + phoneNumber + '...';
-            testCallStatusDiv.className = 'alert alert-info p-2 mt-2'; // Using bootstrap alert classes
-
             try {
-                const response = await fetch("{{ url_for('send_test_call') }}", { // Ensure url_for is correctly rendered by Flask
+                const response = await fetch("{{ url_for('send_test_call') }}", {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // Add CSRF token header if Flask-WTF or similar is used for CSRF protection globally
-                    },
-                    body: JSON.stringify({
-                        test_phone_number: phoneNumber,
-                        script_content: scriptContent,
-                        event_id: eventId
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ script_content: scriptContent, event_id: eventId })
                 });
-
-                const result = await response.json(); // Assuming backend always returns JSON
-
-                if (response.ok && result.success) { // Assuming backend sends {success: true/false, message: "..."}
-                    testCallStatusDiv.textContent = result.message || 'Test call initiated successfully!';
-                    testCallStatusDiv.className = 'alert alert-success p-2 mt-2';
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    showStatus(result.message || 'Test call initiated successfully!', 'success');
+                    startBtn.style.display = 'none';
+                    endBtn.style.display = 'inline-block';
                 } else {
-                    testCallStatusDiv.textContent = 'Error: ' + (result.message || 'Failed to initiate test call. Status: ' + response.status);
-                    testCallStatusDiv.className = 'alert alert-danger p-2 mt-2';
+                    showStatus('Error: ' + (result.message || 'Failed to initiate test call.'), 'error');
+                    startBtn.disabled = false;
                 }
-            } catch (error) {
-                console.error('Test call fetch error:', error);
-                testCallStatusDiv.textContent = 'Error: Could not reach server or client-side error during test call.';
-                testCallStatusDiv.className = 'alert alert-danger p-2 mt-2';
+            } catch (err) {
+                showStatus('Error: Could not reach server or client-side error during test call.', 'error');
+                startBtn.disabled = false;
             } finally {
-                testCallBtn.disabled = false;
-                if(testCallSpinner) testCallSpinner.style.display = 'none';
+                spinner.style.display = 'none';
+            }
+        });
+        endBtn.addEventListener('click', async function() {
+            endBtn.disabled = true;
+            showStatus('Ending test call...');
+            try {
+                const response = await fetch("/end-test-call", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    showStatus(result.message || 'Test call ended.', 'info');
+                } else {
+                    showStatus('Error: ' + (result.message || 'Failed to end test call.'), 'error');
+                }
+            } catch (err) {
+                showStatus('Error ending test call.', 'error');
+            } finally {
+                endBtn.disabled = false;
+                endBtn.style.display = 'none';
+                startBtn.style.display = 'inline-block';
             }
         });
     </script>

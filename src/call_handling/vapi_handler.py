@@ -10,14 +10,15 @@ from typing import Dict, Optional, Tuple # Tuple added
 from datetime import datetime, timedelta
 
 # VAPI SDK Imports
-from vapi.client import Vapi
-from vapi.types.model import Model as VapiModel, ModelMessagesItem
-from vapi.types.voice import Voice as VapiVoice
-from vapi.types.assistant_request import AssistantRequest # Not directly used for phone call, but good to be aware
-from vapi.types.create_phone_call_payload import Customer as VapiCustomer
-from vapi.types.phone_number_request import PhoneNumberRequest # Might be needed for phone_number_id object
-from vapi.types.assistant_override import AssistantOverride as VapiAssistantOverride
-from vapi.types.background_sound import BackgroundSound as VapiBackgroundSound
+from vapi_python import Vapi
+from config import config
+# from vapi.types.model import Model as VapiModel, ModelMessagesItem
+# from vapi.types.voice import Voice as VapiVoice
+# from vapi.types.assistant_request import AssistantRequest # Not directly used for phone call, but good to be aware
+# from vapi.types.create_phone_call_payload import Customer as VapiCustomer
+# from vapi.types.phone_number_request import PhoneNumberRequest # Might be needed for phone_number_id object
+# from vapi.types.assistant_override import AssistantOverride as VapiAssistantOverride
+# from vapi.types.background_sound import BackgroundSound as VapiBackgroundSound
 
 
 logger = logging.getLogger(__name__) # Added logger instance
@@ -30,6 +31,7 @@ class VapiHandler:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
+        self.vapi_client = Vapi(api_key=config.VAPI_PUBLIC_KEY)
     
     def make_outbound_call(self, phone_number: str, assistant_id: str, guest_name: str, 
                           event_details: dict, guest_id_db: int, final_script: str, 
@@ -164,7 +166,7 @@ class VapiHandler:
             payload = {
                 "name": f"{guest_name} Invitation call",
                 "assistantId": assistant_id,
-                "phoneNumberId": "bbb6faa5-8983-4411-b7a1-cd4f159fc4ae",
+                "phoneNumberId": config.VAPI_PHONE_NUMBER_ID,
                 "customers": [
                     {
                         "numberE164CheckEnabled": False,
@@ -197,11 +199,7 @@ class VapiHandler:
             # Conditionally add backgroundSound
             background_music_url = event_details.get("background_music_url")
             if background_music_url: # Check if it's not None and not an empty string
-                payload["assistantOverrides"]["backgroundSound"] = {
-                    "url": background_music_url,
-                    "volume": 0.2,
-                    "loop": "false" # As per issue spec
-                }
+                payload["assistantOverrides"]["backgroundSound"] = background_music_url
 
             print(f"Formatted First Message: {formatted_first_message}")
             print(f"Vapi API Key: {self.api_key}")
@@ -238,125 +236,139 @@ class VapiHandler:
             print(f"Error loading prompt file: {e}")
             return None
 
-    def make_single_test_call(self, phone_number: str, script_content: str, event_config: dict) -> tuple[bool, str]:
+    def make_single_test_call(self, script_content: str, event_config: dict) -> tuple[bool, str]:
         try:
-            host_name = event_config.get('host_name', 'Your Host')
-            guest_name_for_test = "Test User" 
-
-            personalized_script = script_content.replace("{{HostName}}", host_name)
-            personalized_script = personalized_script.replace("{{GuestName}}", guest_name_for_test)
-            
-            test_first_message = f"This is a test call from VoiceVite on behalf of {host_name}. We will now play the invitation script for you."
-
-            voice_sample_id = event_config.get('voice_sample_id')
-            voice_config_payload = {}
-            default_male_vapi_voice = 'JBFqnCBsd6RMkjVDRZzb' # Standard Vapi male voice
-            default_female_vapi_voice = 'XrExE9yKIg1WjnnlVkGX' # Standard Vapi female voice
-
-            if voice_sample_id == default_male_vapi_voice or voice_sample_id == default_female_vapi_voice:
-                voice_config_payload = {"provider": "11labs", "voiceId": voice_sample_id, "model": "eleven_multilingual_v2"}
-            elif voice_sample_id: 
-                 voice_config_payload = {"provider": "lmnt", "voiceId": voice_sample_id}
-            else: 
-                voice_config_payload = {"provider": "11labs", "voiceId": default_male_vapi_voice, "model": "eleven_multilingual_v2"}
-
-            payload = {
-                "name": f"Test Call (Host: {host_name})",
-                "assistantId": event_config.get('vapi_assistant_id'),
-                "phoneNumberId": "bbb6faa5-8983-4411-b7a1-cd4f159fc4ae", 
-                "customers": [{"number": phone_number, "name": guest_name_for_test, "numberE164CheckEnabled": False}],
-                "assistantOverrides": {
-                    "firstMessage": test_first_message,
-                    "model": {
-                        "provider": "openai", "model": "chatgpt-4o-latest", # Ensure this model is desired
-                        "messages": [{"role": "system", "content": personalized_script}]
-                    },
-                    "voice": voice_config_payload
-                },
-                "metadata": {"call_type": "test_call", "description": "Test call from preview page"}
-            }
-
-            background_music_url = event_config.get("background_music_url")
-            if background_music_url:
-                payload["assistantOverrides"]["backgroundSound"] = {"url": background_music_url, "volume": 0.2, "loop": "false"}
-
-            response = requests.post(f"{self.base_url}/call", headers=self.headers, json=payload)
-            response.raise_for_status() 
-            
-            call_data = response.json()
-            if 'results' in call_data and call_data['results'] and len(call_data['results']) > 0 and call_data['results'][0].get('id'):
-                # This block is for the old requests-based method, will be removed.
-                pass # Placeholder to be removed
-
-        # --- Start of SDK-based implementation ---
-        try:
-            vapi_client = Vapi(api_key=self.api_key)
-            
             host_name = event_config.get('host_name', 'Your Host')
             guest_name_for_test = "Test User"
-
-            # Personalize script (assuming {{HostName}} and {{GuestName}} are the only placeholders needed here for test)
             personalized_script = script_content.replace("{{HostName}}", host_name)
             personalized_script = personalized_script.replace("{{GuestName}}", guest_name_for_test)
-            
             test_first_message = f"This is a test call from VoiceVite on behalf of {host_name}. We will now play the invitation script for you."
-
-            # Voice Configuration
             voice_sample_id = event_config.get('voice_sample_id')
             default_male_vapi_voice = 'JBFqnCBsd6RMkjVDRZzb'
             default_female_vapi_voice = 'XrExE9yKIg1WjnnlVkGX'
-            
-            voice_params = {}
+            default_voice = 'paul-11labs'
+            voice_override = {}
             if voice_sample_id == default_male_vapi_voice or voice_sample_id == default_female_vapi_voice:
-                voice_params = {"provider": "11labs", "voice_id": voice_sample_id, "model": "eleven_multilingual_v2"}
+                voice_override = {"provider": "11labs", "voiceId": voice_sample_id}
             elif voice_sample_id:
-                voice_params = {"provider": "lmnt", "voice_id": voice_sample_id}
-            else: # Default to a standard voice if none is configured
-                voice_params = {"provider": "11labs", "voice_id": default_male_vapi_voice, "model": "eleven_multilingual_v2"}
-            
-            voice_override = VapiVoice(**voice_params)
-
-            # Model Configuration
-            model_override = VapiModel(
-                provider="openai", 
-                model="chatgpt-4o-latest", 
-                messages=[ModelMessagesItem(role="system", content=personalized_script)]
-            )
-
-            # Background Sound
+                voice_override = {"provider": "lmnt", "voiceId": voice_sample_id}
+            else:
+                voice_override = default_voice
             background_sound_override = None
             background_music_url = event_config.get("background_music_url")
-            if background_music_url:
-                background_sound_override = VapiBackgroundSound(url=background_music_url, volume=0.2, loop=False)
-
-            # Assistant Overrides
-            assistant_overrides = VapiAssistantOverride(
-                first_message=test_first_message,
-                model=model_override,
-                voice=voice_override,
-                background_sound=background_sound_override # Pass None if no music
-            )
-            
-            # Customer
-            customer = VapiCustomer(number=phone_number, name=guest_name_for_test)
-
-            # Make the call using SDK
-            logger.info(f"Initiating test call to {phone_number} via VAPI SDK...")
-            response = vapi_client.call.create_phone_call(
-                phone_number_id="bbb6faa5-8983-4411-b7a1-cd4f159fc4ae", # Hardcoded phone number ID
-                customer=customer,
+            if background_music_url and isinstance(background_music_url, str) and background_music_url.startswith(("http://", "https://")):
+                background_sound_override = background_music_url
+            else:
+                logger.warning(f"Invalid background music URL provided: {background_music_url}. No background sound will be used.")
+                background_sound_override = "off"
+            assistant_overrides = {
+                "firstMessage": test_first_message,
+                "endCallMessage": "Thank you for listening to the test call. Goodbye!",
+                "model": {
+                    "provider": "openai",
+                    "model": "chatgpt-4o-latest",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": personalized_script
+                        }
+                    ]
+                },
+                "voice": voice_override
+            }
+            if background_sound_override:
+                assistant_overrides["backgroundSound"] = background_sound_override
+            logger.info(f"Initiating test call via VAPI SDK...")
+            response = self.vapi_client.start(
                 assistant_id=event_config.get('vapi_assistant_id'),
                 assistant_overrides=assistant_overrides,
-                metadata={"call_type": "test_call", "description": "Test call from preview page"}
             )
-
-            if response and getattr(response, 'id', None):
-                logger.info(f"Test call initiated successfully via SDK. Call ID: {response.id}")
-                return True, "Test call initiated successfully via SDK."
+            logger.info(f"Response from VAPI SDK: {response}")
+            if response is None or getattr(response, 'id', None):
+                logger.info(f"Test call initiated successfully via SDK.")
+                return True, "Test call initiated successfully."
             else:
-                logger.warning(f"VAPI SDK call response for test call did not contain an ID or was unexpected: {response}")
-                return False, "Test call initiated via SDK, but response did not confirm call ID."
-
+                logger.warning(f"VAPI SDK call response for test call did not confirm call.")
+                return False, "Test call initiated, but response did not confirm call."
         except Exception as e:
             logger.error(f"Error making test call via VAPI SDK: {str(e)}")
-            return False, f"Error during SDK test call: {str(e)}"
+            return False, f"Error during test call: {str(e)}"
+
+    def end_test_call(self) -> tuple[bool, str]:
+        """
+        Ends a test call using the Vapi SDK (no call_id needed for web calls).
+        Returns (success, message)
+        """
+        try:
+            self.vapi_client.stop()
+            logger.info(f"Test call ended via VAPI SDK (no call_id needed).")
+            return True, f"Test call ended."
+        except Exception as e:
+            logger.error(f"Error ending test call: {str(e)}")
+            return False, f"Error ending test call: {str(e)}"
+
+    def make_bulk_outbound_call(self, guests: list, assistant_id: str, event_details: dict, final_script: str, voice_choice: str = 'male') -> Optional[str]:
+        """
+        Initiates a bulk outbound call using the Vapi API for all guests in one request.
+        Each guest can have their own assistantOverrides.
+        """
+        try:
+            customers = []
+            for guest in guests:
+                guest_name = guest.guest_name
+                phone_number = guest.phone_number
+                guest_id_db = guest.id
+                # Personalize script for each guest
+                personalized_script = final_script.replace("{{GuestName}}", guest_name)
+                # Voice config
+                if voice_choice == 'custom':
+                    voice_config = {"provider": "lmnt", "voiceId": event_details.get("voiceSampleId", "")}
+                else:
+                    voice_id = "JBFqnCBsd6RMkjVDRZzb" if voice_choice == 'male' else "XrExE9yKIg1WjnnlVkGX"
+                    voice_config = {"provider": "11labs", "voiceId": voice_id, "model": "eleven_multilingual_v2"}
+                # Assistant overrides for this guest
+                assistant_overrides = {
+                    "firstMessage": f"Hello, this is Rohan from VoiceVite, calling on behalf of {event_details.get('hostName', 'the host')}. I’m here to invite you to a special event. May I speak with {guest_name}, please?",
+                    "endCallMessage": f"Thank you for responding to VoiceVite, {guest_name}. Your invitation to {event_details.get('hostName', 'the host')}’s {event_details.get('eventType', 'an event')} on {event_details.get('eventDate', '')} at {event_details.get('eventTime', '')} is confirmed. We look forward to seeing you at {event_details.get('location', 'a location')}. Goodbye!",
+                    "model": {
+                        "provider": "openai",
+                        "model": "chatgpt-4o-latest",
+                        "messages": [
+                            {"role": "system", "content": personalized_script}
+                        ]
+                    },
+                    "voice": voice_config
+                }
+                background_music_url = event_details.get("background_music_url")
+                if background_music_url:
+                    assistant_overrides["backgroundSound"] = background_music_url
+                # Place guestId in the name for reference
+                customers.append({
+                    "numberE164CheckEnabled": True,
+                    "assistantOverrides": assistant_overrides,
+                    "number": phone_number,
+                    "name": f"{guest_name} [{guest_id_db}]"
+                })
+            payload = {
+                "name": f"Bulk Invitation Call for Event {event_details.get('eventId')}",
+                "assistantId": assistant_id,
+                "phoneNumberId": config.VAPI_PHONE_NUMBER_ID,
+                "customers": customers,
+                "metadata": {
+                    "eventId": event_details.get("eventId"),
+                    "voiceSampleId": event_details.get("voiceSampleId")
+                }
+            }
+            logger.error(f"Vapi bulk call payload: {json.dumps(payload, indent=2)}")  # Log the full payload for debugging
+            response = requests.post(
+                f"{self.base_url}/call",
+                headers=self.headers,
+                json=payload
+            )
+            response.raise_for_status()
+            call_data = response.json()
+            logger.info(f"Bulk call response: {call_data}")
+            return call_data
+        except Exception as e:
+            logger.error(f"Error making bulk outbound call: {str(e)}")
+            return None
