@@ -165,12 +165,21 @@ def index():
     if request.method == 'POST':
         host_name = request.form.get('host_name')
         event_type = request.form.get('event_type')
-        event_date_str = request.form.get('event_date')
-        event_time_str = request.form.get('event_time')
+        event_datetime_str = request.form.get('event_datetime')
         duration = request.form.get('duration')
 
-        if not all([host_name, event_type, event_date_str, event_time_str, duration]):
+        # Validate required fields
+        if not all([host_name, event_type, event_datetime_str, duration]):
             flash('Please fill in all required fields.', 'error')
+            return redirect(url_for('index'))
+
+        # Parse event_datetime into date and time
+        try:
+            event_datetime_obj = datetime.strptime(event_datetime_str, '%Y-%m-%d %H:%M')
+            event_date_str = event_datetime_obj.strftime('%Y-%m-%d')
+            event_time_str = event_datetime_obj.strftime('%H:%M')
+        except Exception:
+            flash('Invalid date and time format. Please use the picker to select a valid date and time.', 'error')
             return redirect(url_for('index'))
 
         session['event_details_part1'] = {

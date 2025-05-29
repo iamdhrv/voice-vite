@@ -7,41 +7,58 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Flatpickr CSS/JS for date/time pickers -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="{{ url_for('static', filename='js/flatpickr-init.js') }}"></script>
     <style>
         /* Embedded styles specific to this page */
+        body { background-color: var(--background); }
         .voice-card {
-            box-shadow: 0 2px 16px 0 #6366f122; border: 3px solid transparent;
-            border-radius: 1rem !important; transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
-            min-height: 120px !important; height: auto !important; display: flex;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03); border: 1px solid var(--border);
+            border-radius: var(--radius) !important; transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
+            min-height: 100px !important; display: flex; /* Reduced min-height */
             flex-direction: column; align-items: center; justify-content: center;
             padding: 1rem !important; cursor: pointer; background-color: #fff; flex-grow: 1;
+            background-color: var(--card);
         }
         .voice-card-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; text-align: center; }
         .selectable-card.selected, .selectable-card:focus-within, .selectable-card:focus {
-            border-color: #6366f1; background: linear-gradient(90deg, #f0f4ff 0%, #e0e7ff 100%);
-            box-shadow: 0 4px 32px 0 #6366f144;
+            border-color: var(--primary); background-color: hsl(212, 72%, 97%); /* Lighter primary */
+            box-shadow: 0 0 0 2px var(--primary);
         }
-        .selectable-card:hover { border-color: #60a5fa; background: #f8fafc; }
+        .selectable-card:hover { border-color: var(--primary); }
         .visually-hidden {
             position: absolute !important; width: 1px !important; height: 1px !important;
             padding: 0 !important; margin: -1px !important; overflow: hidden !important;
-            clip: rect(0,0,0,0) !important; border: 0 !important;
+            clip: rect(0,0,0,0) !important;
+            border: 0 !important;
         }
         .recording-visual, .recorded-audio { margin-top: 1rem; }
         .waveform canvas { border-radius: .375rem; background-color: #e9ecef; }
-        .timer-container { margin-top: 0.5rem; font-size: 0.9rem; color: #6c757d; text-align: center; }
+        .timer-container { margin-top: 0.5rem; font-size: 0.9rem; color: var(--muted-foreground); text-align: center; }
         .recorded-audio audio { width: 100%; margin-bottom: 0.75rem; }
         .action-buttons { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem; }
         .spinner {
             display: none; width: 20px; height: 20px; border: 3px solid #f3f3f3;
-            border-top: 3px solid #6366f1; border-radius: 50%;
+            border-top: 3px solid var(--primary); border-radius: 50%;
             animation: spin 1s linear infinite; margin-left: 8px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .voicevite-title { font-weight: 700; letter-spacing:-1px; font-size:2.5rem; color:#222; }
-        .step-title { font-weight: 600; font-size:1.35rem; color:#222; }
-        .btn-link { text-decoration: none; }
-        .btn-link:hover { text-decoration: underline; }
+        .voicevite-title { font-weight: 700; letter-spacing:-0.05em; font-size:2.25rem; color: var(--foreground); }
+        .step-title { font-weight: 600; font-size:1.5rem; color: var(--foreground); letter-spacing: -0.025em;}
+        .subtitle { color: var(--muted-foreground); }
+        .form-label { font-weight: 500; color: var(--card-foreground); }
+        .btn-outline-secondary { border-color: var(--border); color: var(--secondary-foreground); }
+        .btn-outline-secondary:hover { background-color: var(--secondary); }
+        .btn-primary { background-color: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+        .btn-danger { background-color: var(--destructive); border-color: var(--destructive); color: var(--destructive-foreground); }
+        .btn-outline-danger { border-color: var(--destructive); color: var(--destructive); }
+        .btn-outline-danger:hover { background-color: hsl(0, 80%, 95%); }
+        .btn-outline-primary { border-color: var(--primary); color: var(--primary); }
+        .btn-outline-primary:hover { background-color: hsl(212, 72%, 97%); }
+        .recording-visual, .recorded-audio { border-color: var(--border) !important; background-color: var(--background) !important; }
+        .waveform canvas { background-color: var(--secondary) !important; }
 
         /* --- START: Specific styles for Bootstrap Progress Bar on this page --- */
         div.progress.rounded-pill.w-75 {
@@ -58,6 +75,82 @@
             transition: width .6s ease !important;
         }
         /* --- END: Specific styles for Bootstrap Progress Bar --- */
+
+        /* ShadCN-style voice training */
+        .selection-card {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius) !important;
+            transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
+            min-height: 100px !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem !important;
+            cursor: pointer;
+            background-color: var(--card);
+        }
+        .selection-card-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            text-align: center;
+        }
+        .radio-group {
+            display: flex;
+            flex-direction: row;
+            gap: 1rem;
+        }
+        .form-group label { font-weight: 500; color: var(--foreground); }
+        .form-group input, .form-group select {
+            background-color: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.625rem 1rem;
+            font-size: 0.875rem;
+            color: var(--foreground);
+        }
+        .progress-bar-wrapper {
+            width: 100%;
+            max-width: 75%;
+            margin: 0 auto 2rem auto;
+        }
+        .progress-bar {
+            height: 0.5rem;
+            border-radius: var(--radius);
+            background-color: var(--secondary);
+            width: 100%;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--primary);
+            transition: width 0.3s;
+            border-radius: var(--radius);
+        }
+        .flash-messages li {
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            border: 1px solid transparent;
+        }
+        .flash-error {
+            background-color: hsl(0 72.2% 95.1%);
+            color: hsl(0 84.2% 60.2%);
+            border-color: hsl(0 72.2% 85.1%);
+        }
+        .flash-success {
+            background-color: hsl(142.1 70.6% 95.1%);
+            color: hsl(142.1 76.2% 36.3%);
+            border-color: hsl(142.1 70.6% 85.1%);
+        }
+        .flash-info {
+            background-color: hsl(210 80% 95.1%);
+            color: hsl(210 80% 30.3%);
+            border-color: hsl(210 80% 85.1%);
+        }
     </style>
 </head>
 <body>
@@ -293,7 +386,7 @@
                     mediaRecorder = new MediaRecorder(stream);
                     audioChunks = [];
                     
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    audioContext = new (window.AudioContext || window.webkit.AudioContext)();
                     analyser = audioContext.createAnalyser();
                     const source = audioContext.createMediaStreamSource(stream);
                     source.connect(analyser);

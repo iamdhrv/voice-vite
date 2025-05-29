@@ -9,51 +9,92 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        .voicevite-title { font-weight: 700; letter-spacing:-1px; font-size:2.5rem; color:#222; }
-        body { background: #f0f2f5; /* A slightly softer background for dashboard */ }
+        /* ShadCN-inspired dashboard styles */
         .dashboard-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
         }
-        .card.event-card {
-            border-radius: .75rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* Slightly enhanced shadow */
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-            margin-bottom: 1.5rem;
-        }
-        .card.event-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15); /* Enhanced hover shadow */
-        }
-        .card-footer {
-            background-color: #f8f9fa;
-        }
-        .status-badge {
-            font-size: .85em;
-            padding: .4em .7em;
-        }
-        .rsvp-summary span {
-            margin-right: 10px;
-        }
-         .no-events {
-            text-align: center;
-            padding: 3rem 1rem;
-            background-color: #f8f9fa;
-            border-radius: .75rem;
-            border: 1px dashed #d3d3d3;
+        .event-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
             margin-top: 2rem;
         }
-        .no-events h4 {
-            color: #6c757d;
+        .event-card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            transition: box-shadow 0.2s ease-in-out;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .event-card:hover {
+            box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+        }
+        .event-card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .event-card-details p {
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+            margin-bottom: 0.25rem;
+        }
+        .event-card-details p i { margin-right: 0.5rem; }
+        .rsvp-summary span.badge {
+            font-size: 0.75rem;
+            padding: 0.3em 0.6em;
+            margin-right: 0.25rem;
+            border-radius: 0.25rem;
+        }
+        .event-card-footer {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+        }
+        .no-events-placeholder {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            background-color: var(--secondary);
+            border-radius: var(--radius);
+            border: 1px dashed var(--border);
+            margin-top: 2rem;
+        }
+        .no-events-placeholder h2 {
+            color: var(--foreground);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .no-events-placeholder p {
+            color: var(--muted-foreground);
+            margin-bottom: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .dashboard-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .dashboard-header .btn {
+                align-self: stretch;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container mt-5 mb-5">
+    <div class="container dashboard-container mt-5 mb-5" style="max-width: 1140px;">
         <header class="dashboard-header">
-            <h1 class="voicevite-title mb-0">My VoiceVite Campaigns</h1>
-            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg rounded-3 shadow-sm" style="background-color: #4A90E2; border-color: #4A90E2;">
+            <h1 class="voicevite-title mb-0">Campaigns</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg rounded-3 shadow-sm">
                 <i class="bi bi-plus-circle-fill me-2"></i>Create New Event
             </a>
         </header>
@@ -61,70 +102,71 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="mb-3">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show shadow-sm py-2 px-3 mb-2" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
+                    <div class="flash-messages">
+                        <ul class="list-unstyled">
+                            {% for category, message in messages %}
+                                <li class="flash-{{ category }}">{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                 </div>
             {% endif %}
         {% endwith %}
 
         {% if events_data and events_data|length > 0 %}
-            <div class="row">
+            <div class="event-grid">
                 {% for event_item in events_data %}
-                <div class="col-md-6 col-xl-4"> {# Adjusted for potentially wider screens #}
-                    <div class="card event-card h-100"> {# h-100 for equal height cards in a row #}
-                        <div class="card-body">
-                            <h5 class="card-title fw-semibold">{{ event_item.event.event_type or 'N/A' }}</h5>
-                            <p class="card-text text-muted mb-1">
-                                <small>
-                                    <i class="bi bi-calendar-event me-1"></i>
-                                    {{ event_item.event.event_date.strftime('%a, %b %d, %Y') if event_item.event.event_date else 'Date TBD' }}
-                                    {% if event_item.event.event_time %}
-                                    at {{ event_item.event.event_time.strftime('%I:%M %p') }}
-                                    {% endif %}
-                                </small>
+                <div class="event-card">
+                    <div class="event-card-body">
+                        <h5 class="event-card-title" style="color: var(--card-foreground);">{{ event_item.event.event_type or 'N/A' }}</h5>
+                        <div class="event-card-details">
+                            <p>
+                                <i class="bi bi-calendar-event"></i>
+                                {{ event_item.event.event_date.strftime('%a, %b %d, %Y') if event_item.event.event_date else 'Date TBD' }}
+                                {% if event_item.event.event_time %}
+                                at {{ event_item.event.event_time.strftime('%I:%M %p') }}
+                                {% endif %}
                             </p>
-                            <p class="card-text"><i class="bi bi-geo-alt-fill me-1 text-secondary"></i> {{ event_item.event.location or 'Location TBD' }}</p>
-                            <p class="card-text">
-                                <i class="bi bi-people-fill me-1 text-secondary"></i>
-                                {{ event_item.guest_count }} Guest{{ 's' if event_item.guest_count != 1 else '' }}
+                            <p style="color: var(--muted-foreground);">
+                                <i class="bi bi-geo-alt-fill"></i> {{ event_item.event.location or 'Location TBD' }}
                             </p>
-                            <div class="rsvp-summary mb-2">
-                                <span class="badge bg-success text-white me-1"><i class="bi bi-check-circle-fill me-1"></i>{{ event_item.rsvp_summary.get('yes', 0) }} Yes</span>
-                                <span class="badge bg-danger text-white me-1"><i class="bi bi-x-circle-fill me-1"></i>{{ event_item.rsvp_summary.get('no', 0) }} No</span>
-                                <span class="badge bg-warning text-dark me-1"><i class="bi bi-question-circle-fill me-1"></i>{{ event_item.rsvp_summary.get('maybe', 0) }} Maybe</span>
-                                <span class="badge bg-secondary text-white"><i class="bi bi-hourglass-split me-1"></i>{{ event_item.rsvp_summary.get('pending', 0) }} Pending</span>
-                            </div>
+                            <p style="color: var(--muted-foreground);">
+                                <i class="bi bi-people-fill text-secondary"></i>
+                                {{ event_item.guest_count }} Guest{{ 's' if event_item.guest_count != 1 else '' }} invited
+                            </p>
                         </div>
-                        <div class="card-footer d-flex justify-content-between align-items-center">
-                            <div>
-                                Status: 
-                                <span class="badge rounded-pill 
-                                    {% if event_item.event.status.lower() == 'draft' %} text-bg-light 
-                                    {% elif event_item.event.status.lower() == 'processing' %} text-bg-info
-                                    {% elif event_item.event.status.lower() == 'calls initiated' %} text-bg-primary 
-                                    {% elif event_item.event.status.lower() == 'completed' %} text-bg-success 
-                                    {% elif event_item.event.status.lower().startswith('failed') %} text-bg-danger 
-                                    {% else %} text-bg-secondary {% endif %} status-badge">
-                                    {{ event_item.event.status | title }}
-                                </span>
-                            </div>
-                            <!-- Optional: View/Manage Link -->
-                            <!-- <a href="#" class="btn btn-sm btn-outline-primary disabled">View/Manage</a> -->
+                        <div class="rsvp-summary mb-2">
+                            <span class="badge bg-success text-white me-1"><i class="bi bi-check-circle-fill me-1"></i>{{ event_item.rsvp_summary.get('yes', 0) }} Yes</span>
+                            <span class="badge bg-danger text-white me-1"><i class="bi bi-x-circle-fill me-1"></i>{{ event_item.rsvp_summary.get('no', 0) }} No</span>
+                            <span class="badge bg-warning text-dark me-1"><i class="bi bi-question-circle-fill me-1"></i>{{ event_item.rsvp_summary.get('maybe', 0) }} Maybe</span>
+                            <span class="badge bg-secondary text-white"><i class="bi bi-hourglass-split me-1"></i>{{ event_item.rsvp_summary.get('pending', 0) }} Pending</span>
                         </div>
+                    </div>
+                    <div class="event-card-footer d-flex justify-content-between align-items-center">
+                        <div>
+                            Status: 
+                            <span class="badge rounded-pill 
+                                {% if event_item.event.status.lower() == 'draft' %} text-bg-light 
+                                {% elif event_item.event.status.lower() == 'processing' %} text-bg-info
+                                {% elif event_item.event.status.lower() == 'calls initiated' %} text-bg-primary 
+                                {% elif event_item.event.status.lower() == 'completed' %} text-bg-success 
+                                {% elif event_item.event.status.lower().startswith('failed') %} text-bg-danger 
+                                {% else %} text-bg-secondary {% endif %} status-badge">
+                                {{ event_item.event.status | title }}
+                            </span>
+                        </div>
+                        <!-- Optional: View/Manage Link -->
+                        <!-- <a href="#" class="btn btn-sm btn-outline-primary disabled">View/Manage</a> -->
                     </div>
                 </div>
                 {% endfor %}
             </div>
         {% else %}
-            <div class="no-events">
+            <div class="no-events-placeholder">
                 <i class="bi bi-calendar2-x d-block mb-3" style="font-size: 3.5rem; color: #6c757d;"></i>
-                <h4 class="mb-3">No Campaigns Yet</h4>
+                <h2 class="mb-3" style="color: var(--foreground);">No Campaigns Yet</h2>
                 <p class="text-muted mb-3">It looks like you haven't created any VoiceVite campaigns. <br>Get started by clicking the button below!</p>
-                <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg rounded-3 shadow-sm" style="background-color: #4A90E2; border-color: #4A90E2;"><i class="bi bi-plus-circle-fill me-2"></i>Create Your First Event</a>
+                <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg rounded-3 shadow-sm"><i class="bi bi-plus-circle-fill me-2"></i>Create Your First Event</a>
             </div>
         {% endif %}
     </div>

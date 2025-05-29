@@ -7,23 +7,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Flatpickr CSS/JS for date/time pickers -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="{{ url_for('static', filename='js/flatpickr-init.js') }}"></script>
     <style>
         /* Embedded styles specific to this page */
+        body { background-color: var(--background); }
         .voice-card {
-            box-shadow: 0 2px 16px 0 #6366f122;
-            border: 3px solid transparent;
-            border-radius: 1rem !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius) !important;
             transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
             min-height: 120px !important;
-            height: auto !important;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 1rem !important;
             cursor: pointer;
-            background-color: #fff;
-            flex-grow: 1;
+            background-color: var(--card);
         }
         .voice-card-content {
             display: flex;
@@ -34,67 +37,160 @@
             text-align: center;
         }
         .selectable-card.selected, .selectable-card:focus-within, .selectable-card:focus {
-            border-color: #6366f1;
-            background: linear-gradient(90deg, #f0f4ff 0%, #e0e7ff 100%);
-            box-shadow: 0 4px 32px 0 #6366f144;
+            border-color: var(--primary);
+            background-color: hsl(212, 72%, 97%); /* Lighter primary */
+            box-shadow: 0 0 0 2px var(--primary);
         }
         .selectable-card:hover {
-            border-color: #60a5fa;
-            background: #f8fafc;
+            border-color: var(--primary);
         }
         .visually-hidden {
             position: absolute !important;
-            width: 1px !important; height: 1px !important;
-            padding: 0 !important; margin: -1px !important;
-            overflow: hidden !important; clip: rect(0,0,0,0) !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0,0,0,0) !important;
             border: 0 !important;
         }
         .guest-list-manual { display: none; }
-        .guest-entry { margin-bottom: 15px; align-items: center; }
-        .icon-btn {
-            background: #6366f1; color: white; border: none;
-            padding: 0.375rem 0.75rem; border-radius: 0.25rem; cursor: pointer;
-            font-size: 1rem; line-height: 1.5; display: inline-flex;
-            align-items: center; justify-content: center; width: 38px; height: 38px;
+        .guest-entry {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 1rem;
         }
-        .icon-btn.remove { background: #ef4444; }
-        .icon-btn:hover { opacity: 0.85; }
+        .icon-btn {
+            background-color: var(--secondary); color: var(--secondary-foreground); border: 1px solid var(--border);
+            width: 38px; height: 38px; border-radius: var(--radius);
+        }
+        .icon-btn.remove { background-color: hsl(0, 80%, 95%); color: var(--destructive); border-color: hsl(0,80%,85%);}
+        .icon-btn:hover { background-color: var(--border); }
+        .icon-btn.remove:hover { background-color: hsl(0, 80%, 90%); }
         #guestListCSV { display: none; }
         .spinner {
             display: none; width: 20px; height: 20px;
-            border: 3px solid #f3f3f3; border-top: 3px solid #6366f1;
+            border: 3px solid var(--secondary); border-top: 3px solid var(--primary);
             border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .voicevite-title { font-weight: 700; letter-spacing:-1px; font-size:2.5rem; color:#222; }
-        .step-title { font-weight: 600; font-size:1.35rem; color:#222; }
-        .btn-link { text-decoration: none; }
-        .btn-link:hover { text-decoration: underline; }
-
-        /* --- START: Specific styles for Bootstrap Progress Bar on this page --- */
+        .voicevite-title { font-weight: 700; letter-spacing:-0.05em; font-size:2.25rem; color: var(--foreground); }
+        .step-title { font-weight: 600; font-size:1.5rem; color: var(--foreground); letter-spacing: -0.025em;}
+        .form-label { font-weight: 500; color: var(--card-foreground); }
+        .form-control, .form-select {
+            background-color: var(--background); /* Match body background for inputs */
+            border-color: var(--border);
+            border-radius: var(--radius);
+            padding: 0.625rem 1rem; /* 10px 16px */
+            font-size: 0.9375rem; /* 15px */
+        }
+        /* ShadCN-style selection card and manual entry */
+        .selection-card {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius) !important;
+            transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
+            min-height: 100px !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem !important;
+            cursor: pointer;
+            background-color: var(--card);
+        }
+        .selection-card-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            text-align: center;
+        }
+        .radio-group {
+            display: flex;
+            flex-direction: row;
+            gap: 1rem;
+        }
+        .form-group.full-width, #guestListManual {
+            grid-column: 1 / -1;
+            width: 100%;
+        }
+        .guest-entry {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .btn-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.25rem;
+            height: 2.25rem;
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0;
+            cursor: pointer;
+            font-size: 1.25rem;
+            color: var(--secondary-foreground);
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+        .btn-icon.add { color: var(--primary); }
+        .btn-icon.remove { color: var(--destructive); }
+        .btn-icon:hover { background: hsl(210, 40%, 93.1%); }
         div.progress.rounded-pill.w-75 {
-            height: 8px !important; background-color: #e9ecef !important;
-            padding: 0 !important; overflow: hidden !important;
-            margin-left: auto; margin-right: auto;
+            height: 8px !important;
+            background-color: #e9ecef !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            margin-left: auto;
+            margin-right: auto;
         }
         div.progress.rounded-pill.w-75 > .progress-bar.bg-gradient {
-            display: flex !important; flex-direction: column !important;
-            justify-content: center !important; color: #fff !important;
-            text-align: center !important; white-space: nowrap !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            color: #fff !important;
+            text-align: center !important;
+            white-space: nowrap !important;
             background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%) !important;
-            margin: 0 !important; gap: 0 !important;
+            margin: 0 !important;
+            gap: 0 !important;
             transition: width .6s ease !important;
         }
-        /* --- END: Specific styles for Bootstrap Progress Bar --- */
+        .flash-messages li {
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            border: 1px solid transparent;
+        }
+        .flash-error {
+            background-color: hsl(0 72.2% 95.1%);
+            color: hsl(0 84.2% 60.2%);
+            border-color: hsl(0 72.2% 85.1%);
+        }
+        .flash-success {
+            background-color: hsl(142.1 70.6% 95.1%);
+            color: hsl(142.1 76.2% 36.3%);
+            border-color: hsl(142.1 70.6% 85.1%);
+        }
+        .flash-info {
+            background-color: hsl(210 80% 95.1%);
+            color: hsl(210 80% 30.3%);
+            border-color: hsl(210 80% 85.1%);
+        }
     </style>
 </head>
 <body>
-    <div class="shadow-lg rounded-4 bg-white p-5 mx-auto" style="max-width: 640px; width:100%; margin-top: 2rem; margin-bottom: 2rem;">
+    <div class="form-container mx-auto" style="max-width: 640px; width:100%; margin-top: 2rem; margin-bottom: 2rem;">
             <header class="mb-4 text-center">
                 <h1 class="voicevite-title mb-2">VoiceVite</h1>
                 <div class="d-flex align-items-center justify-content-center mb-4">
                     <div class="progress rounded-pill w-75">
-                        <div class="progress-bar bg-gradient" role="progressbar" style="width: 70%;"></div>
+                        <div class="progress-bar bg-gradient" role="progressbar" style="width: 66%;"></div>
                     </div>
                 </div>
             </header>
@@ -104,9 +200,11 @@
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         <div class="mb-3">
+                            <div class="flash-messages">
                             {% for category, message in messages %}
-                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} shadow-sm py-2 px-3 mb-2" style="font-size:1rem;">{{ message }}</div>
+                                <li class="flash-{{ category }}">{{ message }}</li>
                             {% endfor %}
+                            </div>
                         </div>
                     {% endif %}
                 {% endwith %}
@@ -115,32 +213,35 @@
                     <div class="row g-4">
                         <div class="col-md-6">
                             <label for="location" class="form-label">Location <span class="text-danger">*</span></label> 
-                            <input type="text" id="location" name="location" class="form-control form-control-lg rounded-3" required>
+                            <input type="text" id="location" name="location" class="form-control" required>
+                            <div class="invalid-feedback">This field is required.</div>
                         </div>
                         <div class="col-md-6">
                             <label for="email" class="form-label">Your Email <span class="text-danger">*</span></label> 
-                            <input type="email" id="email" name="email" class="form-control form-control-lg rounded-3" required>
+                            <input type="email" id="email" name="email" class="form-control" required>
+                            <div class="invalid-feedback">This field is required.</div>
                         </div>
                         <div class="col-md-6">
                             <label for="cultural_prefs" class="form-label">Cultural Preferences</label>
-                            <input type="text" id="cultural_prefs" name="cultural_prefs" class="form-control form-control-lg rounded-3">
+                            <input type="text" id="cultural_prefs" name="cultural_prefs" class="form-control">
                         </div>
                         <div class="col-md-6">
                             <label for="rsvp_deadline" class="form-label">RSVP Deadline <span class="text-danger">*</span></label> 
-                            <input type="date" id="rsvp_deadline" name="rsvp_deadline" class="form-control form-control-lg rounded-3" required>
+                            <input type="date" id="rsvp_deadline" name="rsvp_deadline" class="form-control datetimepicker" required>
+                            <div class="invalid-feedback">This field is required.</div>
                             <small class="form-text text-muted">Must be before the event date.</small> 
                         </div>
                         <div class="col-12">
                             <label for="special_instructions" class="form-label">Special Instructions</label>
-                            <textarea id="special_instructions" name="special_instructions" class="form-control form-control-lg rounded-3" rows="3"></textarea>
+                            <textarea id="special_instructions" name="special_instructions" class="form-control" rows="3"></textarea>
                         </div>
                     </div>
 
                     <!-- Insert before the guest input method selection div -->
-                    <div class="row g-4 mb-3"> <!-- Added mb-3 for spacing -->
+                    <div class="mt-4 mb-3"> <!-- Added mb-3 for spacing -->
                         <div class="col-12">
-                            <label for="background_music" class="form-label">Background Music (Optional)</label>
-                            <select id="background_music" name="background_music" class="form-select form-select-lg rounded-3"> <!-- Used form-select and form-select-lg for consistency -->
+                            <label for="background_music" class="form-label">Background Music</label>
+                            <select id="background_music" name="background_music" class="form-select"> <!-- Used form-select and form-select-lg for consistency -->
                                 <option value="" selected>None</option>
                                 <option value="URL_TO_GENTLE_MUSIC.mp3">Gentle Instrumental</option>
                                 <option value="URL_TO_CELEBRATORY_MUSIC.mp3">Celebratory Tune</option>
@@ -155,15 +256,15 @@
                             <label class="voice-card selectable-card" tabindex="0">
                                 <input type="radio" name="guest_input_method" value="manual" class="visually-hidden card-radio" onclick="toggleGuestInput('manual')" autocomplete="off">
                                 <div class="voice-card-content">
-                                    <span class="fw-semibold fs-5 mb-1 text-primary text-center w-100">Manual Entry</span>
-                                    <span class="fs-6 text-secondary mb-1 text-center w-100">Enter guest details one by one 🧑‍💼</span>
+                                    <span class="fw-semibold fs-5 mb-1" style="color: var(--primary);">Manual Entry</span>
+                                    <span class="fs-6" style="color: var(--muted-foreground);">Enter guest details one by one 🧑‍💼</span>
                                 </div>
                             </label>
                             <label class="voice-card selectable-card" tabindex="0">
                                 <input type="radio" name="guest_input_method" value="csv" class="visually-hidden card-radio" onclick="toggleGuestInput('csv')" autocomplete="off">
                                 <div class="voice-card-content">
-                                    <span class="fw-semibold fs-5 mb-1 text-primary text-center w-100">CSV Upload</span>
-                                    <span class="fs-6 text-secondary mb-1 text-center w-100">Upload a CSV file with guest details 📄</span>
+                                    <span class="fw-semibold fs-5 mb-1" style="color: var(--primary);">CSV Upload</span>
+                                    <span class="fs-6" style="color: var(--muted-foreground);">Upload a CSV file with guest details 📄</span>
                                 </div>
                             </label>
                         </div>
@@ -174,10 +275,10 @@
                         <div id="guestEntries">
                             <div class="guest-entry row g-2 align-items-center">
                                 <div class="col">
-                                    <input type="text" id="guest_name_0" name="guest_name[]" placeholder="Guest Name *" class="form-control form-control-lg rounded-3" required>
+                                    <input type="text" id="guest_name_0" name="guest_name[]" placeholder="Guest Name *" class="form-control" required>
                                 </div>
                                 <div class="col">
-                                    <input type="text" id="guest_phone_0" name="guest_phone[]" placeholder="Guest Phone (+XXXXXXXXXX) *" class="form-control form-control-lg rounded-3" required>
+                                    <input type="text" id="guest_phone_0" name="guest_phone[]" placeholder="Guest Phone (+XXXXXXXXXX) *" class="form-control" required>
                                 </div>
                                 <div class="col-auto">
                                     <button type="button" class="icon-btn remove" onclick="removeGuestEntry(this)">−</button>
@@ -200,8 +301,8 @@
 
                     <div style="height: 2.5rem;"></div> 
                     <div class="d-flex justify-content-between align-items-center">
-                        <a href="{{ url_for('voice_selection') }}" class="btn btn-link btn-lg px-4">Back</a>
-                        <button type="submit" class="btn btn-primary btn-lg rounded-3 px-5 shadow-sm d-flex align-items-center" style="background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%); border: none;" id="submitButton">
+                        <a href="{{ url_for('voice_selection') }}" class="btn btn-link">Back</a>
+                        <button type="submit" class="btn btn-primary" id="submitButton">
                             Create Invitation
                             <div class="spinner" id="submitSpinner"></div>
                         </button>
@@ -212,6 +313,19 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('eventForm');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        }
+    });
+
     // All JS from previous version of event_details_step2.html is assumed to be here and correct.
     // For brevity, not repeating the full JS block if it hasn't changed from the one that handled form logic,
     // selectable cards, guest entry additions/removals, and async submission.
@@ -288,10 +402,10 @@
             newEntry.className = 'guest-entry row g-2 align-items-center';
             newEntry.innerHTML = `
                 <div class="col">
-                    <input type="text" id="guest_name_${newEntryId}" name="guest_name[]" placeholder="Guest Name *" class="form-control form-control-lg rounded-3" required>
+                    <input type="text" id="guest_name_${newEntryId}" name="guest_name[]" placeholder="Guest Name *" class="form-control" required>
                 </div>
                 <div class="col">
-                    <input type="text" id="guest_phone_${newEntryId}" name="guest_phone[]" placeholder="Guest Phone (+XXXXXXXXXX) *" class="form-control form-control-lg rounded-3" required>
+                    <input type="text" id="guest_phone_${newEntryId}" name="guest_phone[]" placeholder="Guest Phone (+XXXXXXXXXX) *" class="form-control" required>
                 </div>
                 <div class="col-auto">
                     <button type="button" class="icon-btn remove" onclick="removeGuestEntry(this)">−</button>

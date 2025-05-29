@@ -9,20 +9,22 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         /* Body styling (background, font, flex centering) comes from style.css */
-
+        body { background-color: var(--background); }
         .voicevite-title {
             font-weight: 700;
-            letter-spacing:-1px;
-            font-size:2.5rem;
-            color:#222;
+            letter-spacing:-0.05em;
+            font-size:2.25rem;
+            color: var(--foreground);
         }
         .step-title {
             font-weight: 600;
-            font-size:1.35rem;
-            color:#222;
+            font-size:1.5rem;
+            color: var(--foreground);
+            letter-spacing: -0.025em;
         }
         .step-subtitle {
-            font-size:1.05rem;
+            font-size:1rem;
+            color: var(--muted-foreground);
         }
         
         /* --- START: Specific styles for Bootstrap Progress Bar on this page --- */
@@ -54,55 +56,80 @@
         }
         /* --- END: Specific styles for Bootstrap Progress Bar --- */
 
+        /* ShadCN-style voice selection */
         .voice-card {
-            box-shadow: 0 2px 16px 0 #6366f122; 
-            border: 3px solid transparent;
-            border-radius: 1rem !important; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius) !important;
             transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
-            min-height: 120px !important; 
-            height: auto !important; 
+            min-height: 100px !important;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem 1rem !important; 
-            cursor: pointer; 
-            background-color: #fff; 
+            padding: 1rem !important;
+            cursor: pointer;
+            background-color: var(--card);
         }
         .voice-card-content {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 100%;
-            height: 100%;
             text-align: center;
         }
         .selectable-card.selected, .selectable-card:focus-within {
-            border-color: #6366f1;
-            background: linear-gradient(90deg, #f0f4ff 0%, #e0e7ff 100%);
-            box-shadow: 0 4px 32px 0 #6366f144;
+            border-color: var(--primary);
+            background-color: hsl(212, 72%, 97%);
+            box-shadow: 0 0 0 2px var(--primary);
         }
         .selectable-card:hover {
-            border-color: #60a5fa;
-            background: #f8fafc;
+            border-color: var(--primary);
         }
-        .visually-hidden {
-            position: absolute !important;
-            width: 1px !important; height: 1px !important;
-            padding: 0 !important; margin: -1px !important;
-            overflow: hidden !important; clip: rect(0,0,0,0) !important;
-            border: 0 !important;
+        .form-label { font-weight: 500; color: var(--foreground); }
+        .voice-card-title { font-weight: 600; font-size: 1.25rem; color: var(--foreground); margin-bottom: 0.25rem; }
+        .voice-card-desc { font-size: 0.875rem; color: var(--muted-foreground); }
+        .progress-bar-wrapper {
+            width: 100%;
+            max-width: 75%;
+            margin: 0 auto 2rem auto;
         }
-        .btn-link {
-            text-decoration: none;
+        .progress-bar {
+            height: 0.5rem;
+            border-radius: var(--radius);
+            background-color: var(--secondary);
+            width: 100%;
         }
-        .btn-link:hover {
-            text-decoration: underline;
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--primary);
+            transition: width 0.3s;
+            border-radius: var(--radius);
+        }
+        .flash-messages li {
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            border: 1px solid transparent;
+        }
+        .flash-error {
+            background-color: hsl(0 72.2% 95.1%);
+            color: hsl(0 84.2% 60.2%);
+            border-color: hsl(0 72.2% 85.1%);
+        }
+        .flash-success {
+            background-color: hsl(142.1 70.6% 95.1%);
+            color: hsl(142.1 76.2% 36.3%);
+            border-color: hsl(142.1 70.6% 85.1%);
+        }
+        .flash-info {
+            background-color: hsl(210 80% 95.1%);
+            color: hsl(210 80% 30.3%);
+            border-color: hsl(210 80% 85.1%);
         }
     </style>
 </head>
 <body>
-    <div class="shadow-lg rounded-4 bg-white p-5 mx-auto" style="max-width: 640px; width:100%; margin-top: 2rem; margin-bottom: 2rem;">
+    <div class="form-container mx-auto" style="max-width: 640px; width:100%; margin-top: 2rem; margin-bottom: 2rem;">
         <header class="mb-4 text-center">
             <h1 class="voicevite-title mb-2">VoiceVite</h1>
             <div class="d-flex align-items-center justify-content-center mb-4">
@@ -118,9 +145,13 @@
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     <div class="mb-3">
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} shadow-sm py-2 px-3 mb-2" style="font-size:1rem;">{{ message }}</div>
-                        {% endfor %}
+                        <div class="flash-messages">
+                            <ul class="list-unstyled">
+                                {% for category, message in messages %}
+                                    <li class="flash-{{ category }}">{{ message }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
                     </div>
                 {% endif %}
             {% endwith %}
@@ -133,22 +164,22 @@
                             <label class="voice-card selectable-card" tabindex="0">
                                 <input type="radio" name="voice_choice" value="male" required class="visually-hidden card-radio" autocomplete="off">
                                 <div class="voice-card-content">
-                                    <span class="fw-semibold fs-2 mb-1 text-primary text-center w-100" style="letter-spacing:-1px;">Male Voice</span>
-                                    <span class="fs-6 text-secondary mb-1 text-center w-100" style="font-weight:400;">Crisp, clear, and professional</span>
+                                    <span class="voice-card-title">Male Voice</span>
+                                    <span class="voice-card-desc">Crisp, clear, and professional</span>
                                 </div>
                             </label>
                             <label class="voice-card selectable-card" tabindex="0">
                                 <input type="radio" name="voice_choice" value="female" class="visually-hidden card-radio" autocomplete="off">
                                 <div class="voice-card-content">
-                                    <span class="fw-semibold fs-2 mb-1 text-danger text-center w-100" style="letter-spacing:-1px;">Female Voice</span>
-                                    <span class="fs-6 text-secondary mb-1 text-center w-100" style="font-weight:400;">Warm, friendly, and inviting</span>
+                                    <span class="voice-card-title">Female Voice</span>
+                                    <span class="voice-card-desc">Warm, friendly, and inviting</span>
                                 </div>
                             </label>
                             <label class="voice-card selectable-card" tabindex="0">
                                 <input type="radio" name="voice_choice" value="custom" class="visually-hidden card-radio" autocomplete="off">
                                 <div class="voice-card-content">
-                                    <span class="fw-semibold fs-2 mb-1 text-success text-center w-100" style="letter-spacing:-1px;">Custom Voice</span>
-                                    <span class="fs-6 text-secondary mb-1 text-center w-100" style="font-weight:400;">Record or upload your own</span>
+                                    <span class="voice-card-title">Custom Voice</span>
+                                    <span class="voice-card-desc">Record or upload your own</span>
                                 </div>
                             </label>
                         </div>
@@ -156,8 +187,8 @@
                 </div>
                 <div style="height: 2.5rem;"></div>
                 <div class="d-flex justify-content-between">
-                    <a href="{{ url_for('index') }}" class="btn btn-link btn-lg px-4">Back</a>
-                    <button type="submit" class="btn btn-primary btn-lg rounded-3 px-5 shadow-sm" style="background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%); border: none;">Next</button>
+                    <a href="{{ url_for('index') }}" class="btn btn-link">Back</a>
+                    <button type="submit" class="btn btn-primary">Next</button>
                 </div>
             </form>
         </main>
