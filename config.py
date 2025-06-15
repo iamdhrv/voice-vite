@@ -24,6 +24,7 @@ class Config:
     GROK_API_KEY = os.getenv('GROK_API_KEY') # Or your preferred LLM API key
     LMNT_API_KEY = os.getenv('LMNT_API_KEY')
     VAPI_PHONE_NUMBER_ID = os.getenv('VAPI_PHONE_NUMBER_ID')
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')  # Google's Gemini API key
 
     # Airtable Configuration
     AIRTABLE_BASE_ID = os.getenv('AIRTABLE_BASE_ID')

@@ -10,16 +10,22 @@ from werkzeug.utils import secure_filename
 import logging
 import sys # For CLI table creation
 import re
+import json
 
 from config import config
 # from src.airtable_integration.client import AirtableClient # Deprecated
 from src.db_access import postgres_client
 from src.utils.csv_parser import parse_csv_to_guests
-from src.voice_cloning.eleven_labs_handler import ElevenLabsHandler
 from src.call_handling.vapi_handler import VapiHandler
 from src.voice_cloning.lmnt_handler import create_custom_voice
 from src.database import db, init_app as init_db_app
 from src.models import Event, Guest, RSVP # Ensure models are imported
+from flask_wtf import FlaskForm
+from src.ai.gemini_handler import GeminiHandler # Import GeminiHandler
+from google import genai
+
+# Initialize Gemini handler with default voice gender (will be updated based on user selection)
+gemini_handler = GeminiHandler(voice_gender='female')  # Default to female
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
@@ -44,11 +50,50 @@ logger = logging.getLogger(__name__)
 
 # Initialize clients (Airtable client is deprecated)
 # airtable_client = AirtableClient(personal_access_token=config.AIRTABLE_PERSONAL_ACCESS_TOKEN, base_id=config.AIRTABLE_BASE_ID)
-eleven_labs_handler = ElevenLabsHandler(api_key=config.ELEVENLABS_API_KEY)
+# eleven_labs_handler = ElevenLabsHandler(api_key=config.ELEVENLABS_API_KEY)
 vapi_handler = VapiHandler(api_key=config.VAPI_API_KEY)
 
-# Helper function to generate event script
+# Helper function to generate event script using Gemini AI with fallback to template
 def _generate_event_script(event: Event, guest_name_placeholder: str = "{{GuestName}}") -> str:
+    """
+    Generate an event script using Gemini AI. If Gemini is not available or fails,
+    falls back to the template-based approach.
+    """
+    # Prepare event data for Gemini
+    event_data = {
+        'event_type': event.event_type or 'event',
+        'host_name': event.host_name or 'the host',
+        'event_date': event.event_date.strftime('%A, %B %d, %Y') if event.event_date else 'a future date',
+        'event_time': event.event_time.strftime('%I:%M %p').lstrip('0') if event.event_time else 'a suitable time',
+        'location': event.location or 'a location',
+        'duration': event.duration or 'a few hours',
+        'special_instructions': event.special_instructions or 'None',
+        'cultural_preferences': event.cultural_preferences or 'None',
+        'rsvp_deadline': event.rsvp_deadline.strftime('%A, %B %d, %Y') if event.rsvp_deadline else 'soon'
+    }
+    
+    # Try to generate script using Gemini
+    try:
+        generated_script = gemini_handler.generate_script(
+            event_data=event_data,
+            guest_name=guest_name_placeholder
+        )
+        
+        if generated_script:
+            logger.info("Successfully generated script using Gemini")
+            return generated_script
+            
+    except Exception as e:
+        logger.error(f"Error generating script with Gemini: {str(e)}")
+    
+    # Fallback to template-based approach if Gemini fails
+    logger.info("Falling back to template-based script generation")
+    return _generate_template_script(event, guest_name_placeholder)
+
+def _generate_template_script(event: Event, guest_name_placeholder: str) -> str:
+    """
+    Fallback function that generates a script using the template-based approach.
+    """
     prompt_template_path = "src/voice_config/VoiceAssitantPrompt.md"
     try:
         with open(prompt_template_path, "r") as file:
@@ -63,16 +108,14 @@ def _generate_event_script(event: Event, guest_name_placeholder: str = "{{GuestN
     rsvp_deadline_formatted = event.rsvp_deadline.strftime('%A, %B %d, %Y') if event.rsvp_deadline else "soon"
 
     # Derived values
-    # ArrivalTime
     formatted_arrival_time = "15 minutes before the event (specific time not set)"
     if event.event_date and event.event_time:
         try:
             event_datetime_obj = datetime.combine(event.event_date, event.event_time)
             arrival_datetime = event_datetime_obj - timedelta(minutes=15)
             formatted_arrival_time = arrival_datetime.strftime('%I:%M %p').lstrip("0")
-        except TypeError: # Handle cases where date/time might not be proper objects despite not being None
+        except TypeError:
             logger.warning("Could not combine event.event_date and event.event_time for ArrivalTime calculation.")
-
 
     # DressCode
     derived_dress_code = "not specified"
@@ -81,11 +124,9 @@ def _generate_event_script(event: Event, guest_name_placeholder: str = "{{GuestN
         dress_code_marker = "dress code"
         if dress_code_marker in si_lower:
             start_index = si_lower.find(dress_code_marker) + len(dress_code_marker)
-            # Remove "is", ":", or "." if they are immediately after "dress code"
             substring_after_marker = event.special_instructions[start_index:].lstrip(": is.").strip()
-            # Take text until the next sentence or a significant punctuation like ';'
             potential_dress_code = substring_after_marker.split('.')[0].split(';')[0].strip()
-            if potential_dress_code: # Ensure it's not empty
+            if potential_dress_code:
                 derived_dress_code = potential_dress_code
 
     # AlternateDate
@@ -95,11 +136,10 @@ def _generate_event_script(event: Event, guest_name_placeholder: str = "{{GuestN
             alternate_event_date_obj = event.event_date + timedelta(days=1)
             formatted_alternate_date = alternate_event_date_obj.strftime('%A, %B %d, %Y')
         except TypeError:
-             logger.warning("Could not calculate AlternateDate due to event.event_date type.")
-
+            logger.warning("Could not calculate AlternateDate due to event.event_date type.")
 
     # AlternateTime (same as original event time if available)
-    formatted_alternate_time = event_time_formatted # Uses the already formatted event_time_formatted
+    formatted_alternate_time = event_time_formatted
 
     variable_values = {
         "[HostName]": event.host_name or "the host",
@@ -109,7 +149,7 @@ def _generate_event_script(event: Event, guest_name_placeholder: str = "{{GuestN
         "[EventTime]": event_time_formatted,
         "[Location]": event.location or "a location",
         "[CulturalPreferences]": event.cultural_preferences or "",
-        "[SpecialInstructions]": event.special_instructions or "", # The full instructions
+        "[SpecialInstructions]": event.special_instructions or "",
         "[Duration]": event.duration or "a few hours",
         "[RSVPDeadline]": rsvp_deadline_formatted,
         "[ArrivalTime]": formatted_arrival_time,
@@ -120,13 +160,15 @@ def _generate_event_script(event: Event, guest_name_placeholder: str = "{{GuestN
 
     formatted_prompt = prompt_template
     for placeholder, value in variable_values.items():
-        formatted_prompt = formatted_prompt.replace(placeholder, str(value)) # Ensure value is string
+        formatted_prompt = formatted_prompt.replace(placeholder, str(value))
     
     return formatted_prompt
+
 
 def allowed_file(filename, allowed_extensions_set):
     """Checks if the uploaded file has an allowed extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions_set
+
 
 def initiate_vapi_call(event_id: int, guest_id: int, guest_name: str, phone_number: str, 
                        voice_sample_id: str, event_details_for_vapi: dict, 
@@ -196,6 +238,7 @@ def index():
 @app.route('/voice-selection', methods=['GET', 'POST'])
 def voice_selection():
     """Handles Step 2: Voice Selection."""
+    form = FlaskForm() # Instantiate FlaskForm
     if 'event_details_part1' not in session:
         flash('Please complete event details first.', 'error')
         return redirect(url_for('index'))
@@ -210,48 +253,58 @@ def voice_selection():
             return redirect(url_for('voice_training'))
         return redirect(url_for('event_details_step2'))
 
-    return render_template('voice_selection.html')
+    return render_template('voice_selection.html', form=form) # Pass form
 
 @app.route('/voice-training', methods=['GET', 'POST'])
 def voice_training():
     """Handles voice training for custom voice selection using LMNT API."""
+    form = FlaskForm() # Instantiate FlaskForm
     if 'event_details_part1' not in session or session.get('voice_choice') != 'custom':
         flash('Please complete previous steps first.', 'error')
         return redirect(url_for('voice_selection'))
 
     if request.method == 'POST':
         try:
-            has_upload = 'audio' in request.files and request.files['audio'].filename != ''
+            # Check for file upload or recorded audio
+            has_upload = 'audioFile' in request.files and request.files['audioFile'].filename != ''
             has_recording = 'audio_blob' in request.files and request.files['audio_blob'].filename != ''
+            voice_option = request.form.get('voice_option', 'upload')
+
+            logger.info(f"Voice option: {voice_option}, has_upload: {has_upload}, has_recording: {has_recording}")
 
             if not (has_upload or has_recording):
                 flash('Please either upload an audio file or record your voice.', 'error')
-                return redirect(url_for('voice_training'))
-            if has_upload and has_recording:
-                flash('Please choose only one option: upload an audio file or record your voice.', 'error')
-                return redirect(url_for('voice_training'))
+                return render_template('voice_training.html', form=form)
+
+            if voice_option == 'upload' and not has_upload:
+                flash('Please upload an audio file.', 'error')
+                return render_template('voice_training.html', form=form)
+                
+            if voice_option == 'record' and not has_recording:
+                flash('Please record your voice.', 'error')
+                return render_template('voice_training.html', form=form)
 
             host_name = session.get('event_details_part1', {}).get('host_name', 'CustomVoice')
             audio_path = ""
 
-            if has_upload:
-                audio_file = request.files['audio']
+            if voice_option == 'upload':
+                audio_file = request.files['audioFile']
                 if not allowed_file(audio_file.filename, app.config['ALLOWED_EXTENSIONS_VOICE']):
                     flash(f"Invalid audio file type. Supported formats: {', '.join(app.config['ALLOWED_EXTENSIONS_VOICE'])}", 'error')
-                    return redirect(url_for('voice_training'))
+                    return render_template('voice_training.html', form=form)
                 filename = secure_filename(f"{host_name}_{audio_file.filename}")
                 audio_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 audio_file.save(audio_path)
-            else: # has_recording
+            else:  # voice_option == 'record'
                 audio_blob = request.files['audio_blob']
-                filename = f"{host_name}_recording.wav" 
+                filename = f"{host_name}_recording.wav"
                 audio_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 audio_blob.save(audio_path)
             
             if not config.LMNT_API_KEY: 
                 flash('LMNT API key not set. Please configure it in .env.', 'error')
                 logger.error("LMNT API key not set")
-                return redirect(url_for('voice_training'))
+                return render_template('voice_training.html', form=form) # Pass form on error
 
             voice_id = create_custom_voice(audio_path, f"{host_name}_VoiceVite", config.LMNT_API_KEY)
             if voice_id:
@@ -260,12 +313,12 @@ def voice_training():
                 return redirect(url_for('event_details_step2'))
             else:
                 flash('Failed to create custom voice.', 'error')
-                return redirect(url_for('voice_training'))
+                return render_template('voice_training.html', form=form) # Pass form on error
         except Exception as e:
             logger.error(f"Error processing voice training: {str(e)}")
             flash(f'Error processing voice training: {str(e)}', 'error')
-            return redirect(url_for('voice_training'))
-    return render_template('voice_training.html')
+            return render_template('voice_training.html', form=form) # Pass form on error
+    return render_template('voice_training.html', form=form) # Pass form for GET request
 
 @app.route('/event-details-step2', methods=['GET', 'POST'])
 def event_details_step2():
@@ -340,6 +393,11 @@ def event_details_step2():
         guest_input_method = request.form.get('guest_input_method')
         csv_path_to_save = None
         manual_guests_data = []
+        
+        # Log form data for debugging
+        logger.debug(f"Guest input method: {guest_input_method}")
+        logger.debug(f"Form data: {request.form}")
+        
         if guest_input_method == 'csv':
             if 'guest_list' in request.files and request.files['guest_list'].filename != '':
                 file = request.files['guest_list']
@@ -349,18 +407,33 @@ def event_details_step2():
                     db_event_data['guest_list_csv_path'] = csv_path_to_save
                     try:
                         file.save(csv_path_to_save)
-                        logger.info(f"Guest list CSV (if any) saved to {csv_path_to_save}")
+                        logger.info(f"Guest list CSV saved to {csv_path_to_save}")
                     except Exception as e:
                         logger.error(f"Failed to save CSV file {csv_path_to_save}: {e}")
                         flash('Error saving guest list CSV file, but proceeding.', 'warning')
                 else:
                     flash('Invalid file type for guest list. Only CSV allowed. Proceeding without CSV.', 'warning')
         elif guest_input_method == 'manual':
+            # Get guest data from form arrays
             manual_guest_names = request.form.getlist('guest_name[]')
             manual_guest_phones = request.form.getlist('guest_phone[]')
+            
+            # Log the raw guest data for debugging
+            logger.debug(f"Raw guest names: {manual_guest_names}")
+            logger.debug(f"Raw guest phones: {manual_guest_phones}")
+            
+            # Process and validate guest data
             for name, phone in zip(manual_guest_names, manual_guest_phones):
-                if name.strip() and phone.strip():
-                    manual_guests_data.append({'guest_name': name.strip(), 'phone_number': phone.strip()})
+                name = name.strip()
+                phone = phone.strip()
+                if name and phone:
+                    manual_guests_data.append({
+                        'guest_name': name,
+                        'phone_number': phone
+                    })
+                    logger.debug(f"Added guest: {name} - {phone}")
+                
+            logger.info(f"Processed {len(manual_guests_data)} guests from manual entry")
 
         created_event = postgres_client.create_event(db_event_data)
         if not created_event:
@@ -370,10 +443,23 @@ def event_details_step2():
 
         # Store manual guests in DB if present
         if guest_input_method == 'manual' and manual_guests_data:
+            logger.info(f"Attempting to save {len(manual_guests_data)} guests to database...")
+            success_count = 0
             for guest_data in manual_guests_data:
-                created_guest = postgres_client.create_guest(event_id, guest_data)
-                if not created_guest:
-                    logger.error(f"Failed to add manual guest: {guest_data}")
+                try:
+                    created_guest = postgres_client.create_guest(event_id, guest_data)
+                    if created_guest:
+                        success_count += 1
+                        logger.debug(f"Successfully added guest: {guest_data['guest_name']} (ID: {created_guest.id if hasattr(created_guest, 'id') else 'N/A'})")
+                    else:
+                        logger.error(f"Failed to add guest (database returned None): {guest_data}")
+                except Exception as e:
+                    logger.error(f"Error adding guest {guest_data.get('guest_name', 'Unknown')}: {str(e)}")
+            
+            if success_count > 0:
+                logger.info(f"Successfully added {success_count} out of {len(manual_guests_data)} guests to the database")
+            if success_count < len(manual_guests_data):
+                logger.warning(f"Failed to add {len(manual_guests_data) - success_count} guests to the database")
             logger.info(f"Added {len(manual_guests_data)} manual guests for event {event_id}.")
 
         # Fetch the full event object from DB to pass to script generator and template
@@ -383,7 +469,20 @@ def event_details_step2():
             # Consider how to handle this - maybe delete the created_event or set status to failed
             return redirect(url_for('event_details_step2'))
 
-        # Generate the sample script using the helper function
+        # Get the selected voice type and host name from the form
+        voice_choice = request.form.get('voice_choice', 'female')
+        host_name = request.form.get('host_name', '')
+        
+        # For custom voice, we'll use the host's name as the assistant name
+        if voice_choice == 'custom' and host_name:
+            # Update the Gemini handler with custom voice and host name
+            global gemini_handler
+            gemini_handler = GeminiHandler(voice_gender='custom', host_name=host_name)
+        else:
+            # For male/female voices, just update the voice gender
+            gemini_handler = GeminiHandler(voice_gender=voice_choice)
+        
+        # Generate the script using the helper function
         sample_script = _generate_event_script(event_object_from_db) 
 
         # Clean up session variables - keep voice_choice and voice_sample_id as they are part of event config
@@ -615,93 +714,130 @@ def uploaded_file(filename):
 @app.route('/webhook', methods=['POST'])
 def webhook():
     """Webhook endpoint to log Vapi events, especially end-of-call-report for detailed analysis."""
-    event_data = request.get_json()
-    logger.debug("-------------------------------------------------")
-    logger.debug(f"Received Vapi webhook event: {event_data}")
+    if request.method == 'OPTIONS':
+        # Handle preflight requests
+        response = jsonify({'status': 'success'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        return response
+        
+    try:
+        if not request.is_json:
+            logger.error("Webhook received non-JSON data")
+            return jsonify({'status': 'error', 'message': 'Invalid content type, expected application/json'}), 400
+            
+        event_data = request.get_json()
+        if not event_data:
+            logger.error("Webhook received empty JSON data")
+            return jsonify({'status': 'error', 'message': 'Empty JSON payload'}), 400
+            
+        logger.debug("-------------------------------------------------")
+        logger.debug(f"Received Vapi webhook event: {event_data}")
 
-    message = event_data.get('message', event_data) 
-    if not isinstance(message, dict) and isinstance(event_data, dict) and 'type' in event_data : 
-        message = event_data
+        message = event_data.get('message', event_data) 
+        if not isinstance(message, dict) and isinstance(event_data, dict) and 'type' in event_data:
+            message = event_data
 
-    event_type = message.get('type')
+        event_type = message.get('type')
+        if not event_type:
+            logger.error("Webhook missing event type")
+            return jsonify({'status': 'error', 'message': 'Missing event type'}), 400
 
-    if event_type == 'status-update': 
-        status = message.get('status')
-        call_id_vapi = message.get('callId') 
-        call_type = message.get('call', {}).get('type')
-        if call_type == 'webCall':
-            logger.info(f"Ignoring webhook for webCall type (test call): {call_id_vapi}")
-            return jsonify({'status': 'Ignored webCall'}), 200
-        logger.debug(f"Webhook: Call status-update for Vapi Call ID {call_id_vapi}: {status}")
-        if status == 'ended':
-            error_message = message.get('error', {}).get('message', 'Unknown Vapi error from status-update')
-            logger.error(f"Webhook: Vapi Call ID {call_id_vapi} failed. Reason: {error_message}")
-            call_details = message.get('call', {})
+        if event_type == 'status-update': 
+            status = message.get('status')
+            call_id_vapi = message.get('callId') 
+            call_type = message.get('call', {}).get('type')
+            if call_type == 'webCall':
+                logger.info(f"Ignoring webhook for webCall type (test call): {call_id_vapi}")
+                return jsonify({'status': 'Ignored webCall'}), 200
+                
+            logger.debug(f"Webhook: Call status-update for Vapi Call ID {call_id_vapi}: {status}")
+            if status == 'ended':
+                error_message = message.get('error', {}).get('message', 'Unknown Vapi error from status-update')
+                logger.error(f"Webhook: Vapi Call ID {call_id_vapi} failed. Reason: {error_message}")
+                call_details = message.get('call', {})
+                # Extract guestId from call.customer.name (e.g., 'John Doe [4]')
+                customer = call_details.get('customer', {})
+                customer_name = customer.get('name', '')
+                guest_id_str = None
+                match = re.search(r'\[(\d+)\]$', customer_name)
+                if match:
+                    guest_id_str = match.group(1)
+                if guest_id_str:
+                    try:
+                        guest_id = int(guest_id_str)
+                        guest = postgres_client.get_guest_by_id(guest_id)
+                        if guest and guest.call_status not in ["Called - RSVP Received", "Failed - API Error", "Call Failed"]: 
+                            postgres_client.update_guest_call_status(guest_id, "Failed - VAPI Status Update")
+                    except ValueError:
+                        logger.error(f"Invalid guestId '{guest_id_str}' in status-update webhook.")
+            return jsonify({'status': 'Status update processed'}), 200
+
+        elif event_type == 'end-of-call-report':
+            call = message.get('call', {}) 
+            call_type = call.get('type')
+            if call_type == 'webCall':
+                logger.info(f"Ignoring end-of-call-report for webCall type (test call).")
+                return jsonify({'status': 'Ignored webCall'}), 200
+                
             # Extract guestId from call.customer.name (e.g., 'John Doe [4]')
-            customer = call_details.get('customer', {})
+            customer = call.get('customer', {})
             customer_name = customer.get('name', '')
             guest_id_str = None
             match = re.search(r'\[(\d+)\]$', customer_name)
             if match:
                 guest_id_str = match.group(1)
-            if guest_id_str:
-                try:
-                    guest_id = int(guest_id_str)
-                    guest = postgres_client.get_guest_by_id(guest_id)
-                    if guest and guest.call_status not in ["Called - RSVP Received", "Failed - API Error", "Call Failed"]: 
-                        postgres_client.update_guest_call_status(guest_id, "Failed - VAPI Status Update")
-                except ValueError:
-                    logger.error(f"Invalid guestId '{guest_id_str}' in status-update webhook.")
+                
+            # eventId can still come from metadata if present
+            metadata = call.get('metadata') if call.get('metadata') is not None else message.get('metadata', {})
+            event_id_str = metadata.get('eventId')
+            
+            if not guest_id_str or not event_id_str:
+                logger.error(f"Webhook end-of-call-report missing guestId or eventId: customer_name={customer_name}, metadata={metadata}")
+                return jsonify({'status': 'Error', 'message': 'Missing guestId or eventId'}), 400
+                
+            try:
+                guest_id = int(guest_id_str)
+                event_id = int(event_id_str)
+            except ValueError:
+                logger.error(f"Webhook end-of-call-report invalid IDs: guestId='{guest_id_str}', eventId='{event_id_str}'")
+                return jsonify({'status': 'Error', 'message': 'Invalid guestId or eventId format'}), 400
+                
+            analysis = message.get('analysis', {})
+            structured_data = analysis.get('structuredData', {})
+            summary = analysis.get('summary', '') 
 
-    elif event_type == 'end-of-call-report':
-        call = message.get('call', {}) 
-        call_type = call.get('type')
-        if call_type == 'webCall':
-            logger.info(f"Ignoring end-of-call-report for webCall type (test call).")
-            return jsonify({'status': 'Ignored webCall'}), 200
-        # Extract guestId from call.customer.name (e.g., 'John Doe [4]')
-        customer = call.get('customer', {})
-        customer_name = customer.get('name', '')
-        guest_id_str = None
-        match = re.search(r'\[(\d+)\]$', customer_name)
-        if match:
-            guest_id_str = match.group(1)
-        # eventId can still come from metadata if present
-        metadata = call.get('metadata') if call.get('metadata') is not None else message.get('metadata', {})
-        event_id_str = metadata.get('eventId')
-        if not guest_id_str or not event_id_str:
-            logger.error(f"Webhook end-of-call-report missing guestId (in customer.name) or eventId (in metadata): customer_name={customer_name}, metadata={metadata}")
-            return jsonify({'status': 'Error', 'message': 'Missing guestId or eventId'}), 400
-        try:
-            guest_id = int(guest_id_str)
-            event_id = int(event_id_str)
-        except ValueError:
-            logger.error(f"Webhook end-of-call-report guestId or eventId is not valid: guestId='{guest_id_str}', eventId='{event_id_str}'")
-            return jsonify({'status': 'Error', 'message': 'Invalid guestId or eventId format'}), 400
-        analysis = message.get('analysis', {})
-        structured_data = analysis.get('structuredData', {})
-        summary = analysis.get('summary', '') 
+            rsvp_response_from_vapi = structured_data.get('rsvp_response', 'No Response')
+            if not rsvp_response_from_vapi or str(rsvp_response_from_vapi).strip() == "":
+                rsvp_response_from_vapi = "No Response"
 
-        rsvp_response_from_vapi = structured_data.get('rsvp_response', 'No Response')
-        if not rsvp_response_from_vapi or str(rsvp_response_from_vapi).strip() == "":
-             rsvp_response_from_vapi = "No Response"
-
-        db_rsvp_data = {
-            'response': rsvp_response_from_vapi.capitalize(),
-            'summary': summary, 
-            'special_request': structured_data.get('special_request'),
-            'reminder_request': structured_data.get('reminder_call_details') 
-        }
-        
-        logger.debug(f"Webhook Call Report Analysis for guest {guest_id}, event {event_id}: {analysis}")
-        logger.debug(f"Webhook Structured Data for RSVP: {db_rsvp_data}")
-        
-        created_rsvp = postgres_client.create_rsvp(guest_id, event_id, db_rsvp_data)
-        if created_rsvp:
-            postgres_client.update_guest_call_status(guest_id, "Called - RSVP Received")
-            logger.info(f"RSVP logged via webhook for guest {guest_id}, event {event_id}. Response: {db_rsvp_data['response']}")
+            db_rsvp_data = {
+                'response': rsvp_response_from_vapi.capitalize(),
+                'summary': summary, 
+                'special_request': structured_data.get('special_request'),
+                'reminder_request': structured_data.get('reminder_call_details') 
+            }
+            
+            logger.debug(f"Webhook Call Report Analysis for guest {guest_id}, event {event_id}: {analysis}")
+            logger.debug(f"Webhook Structured Data for RSVP: {db_rsvp_data}")
+            
+            created_rsvp = postgres_client.create_rsvp(guest_id, event_id, db_rsvp_data)
+            if created_rsvp:
+                postgres_client.update_guest_call_status(guest_id, "Called - RSVP Received")
+                logger.info(f"RSVP logged via webhook for guest {guest_id}, event {event_id}. Response: {db_rsvp_data['response']}")
+                return jsonify({'status': 'success', 'message': 'RSVP logged successfully'}), 200
+            else:
+                logger.error(f"Failed to log RSVP via webhook for guest {guest_id}, event {event_id}")
+                return jsonify({'status': 'error', 'message': 'Failed to log RSVP'}), 500
+                
         else:
-            logger.error(f"Failed to log RSVP via webhook for guest {guest_id}, event {event_id}")
+            logger.info(f"Received unhandled webhook event type: {event_type}")
+            return jsonify({'status': 'success', 'message': 'Event type not handled'}), 200
+            
+    except Exception as e:
+        logger.error(f"Error processing webhook: {str(e)}", exc_info=True)
+        return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
 
     return jsonify({'status': 'Webhook event received'}), 200
 
@@ -790,5 +926,5 @@ if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'create-tables':
         create_db_tables()
     else:
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True) 
-        app.run(debug=config.DEBUG, port=5000)
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        app.run(host='0.0.0.0', port=5000, debug=True)

@@ -3,46 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceVite - Event Details (Step 3)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>VoiceVite - Event Details</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Flatpickr CSS/JS for date/time pickers -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Hind:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="{{ url_for('static', filename='js/flatpickr-init.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        /* Embedded styles specific to this page */
-        body { background-color: var(--background); }
-        .voice-card {
-            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-            border: 1px solid var(--border);
-            border-radius: var(--radius) !important;
-            transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
-            min-height: 120px !important;
+        div { box-sizing: border-box; }
+        html, body {
+            border: 0;
+            padding: 0;
+            margin: 0;
+            position: relative;
+            font-family: 'Hind', sans-serif;
+        }
+        body {
+            background-color: #FFFFFF;
+            padding: 20px 0;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        .container-main {
+            width: 100%;
+            max-width: 1440px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container > * {
+            width: 100%;
+            max-width: 800px;
+            padding: 0 24px;
+            box-sizing: border-box;
+        }
+        .progress-steps-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 28px;
+            width: 100%;
+            max-width: 800px;
+            padding: 0 10px;
+            z-index: 1;
+        }
+        .step-indicators {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 16px;
+            margin-top: 28px;
+        }
+        .progress-step-motiff {
+            width: 40px;
+            height: 40px;
+            border-radius: 50% !important;
+            display: flex;
             justify-content: center;
-            padding: 1rem !important;
-            cursor: pointer;
-            background-color: var(--card);
+            align-items: center;
+            background: #2563EB;
+            color: white;
+            font-weight: 500;
+        }
+        .progress-step-motiff.inactive {
+            background: #F1F5F9;
+            color: #0F172A;
+            border-radius: 50% !important;
+        }
+        .step-line {
+            width: 64px;
+            height: 2px;
+            background-color: #E2E8F0;
+        }
+        .step-line.active {
+            background-color: #2563EB;
+        }
+        .step-labels {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 480px;
+            margin-top: 8px;
+        }
+        .step-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #64748B;
+            text-align: center;
+            flex: 1;
+        }
+        .step-label.active {
+            color: #2563EB;
+            font-weight: 600;
+        }
+        .form-card-motiff {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            padding: 48px;
+            width: 100%;
+            max-width: 720px;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 1;
+            border: 1px solid #E2E8F0;
+        }
+        .form-title-motiff {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #0F172A;
+            text-align: center;
+            line-height: 37px;
+            margin: 0 0 12px 0;
+        }
+        .form-subtitle-motiff {
+            font-family: 'Hind', sans-serif;
+            font-size: 16px;
+            font-weight: 400;
+            color: #64748B;
+            text-align: center;
+            line-height: 24px;
+            margin: 0 auto 32px;
+            max-width: 600px;
+        }
+        .form-control, .form-select {
+            border: 2px solid #E8EAED;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #4285F4;
+            box-shadow: 0 0 0 0.2rem rgba(66, 133, 244, 0.25);
+            outline: none;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #334155;
+            margin-bottom: 8px;
+            font-size: 14px;
         }
         .voice-card-content {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            width: 100%;
-            text-align: center;
-        }
-        .selectable-card.selected, .selectable-card:focus-within, .selectable-card:focus {
-            border-color: var(--primary);
-            background-color: hsl(212, 72%, 97%); /* Lighter primary */
-            box-shadow: 0 0 0 2px var(--primary);
-        }
-        .selectable-card:hover {
-            border-color: var(--primary);
+            gap: 8px;
         }
         .visually-hidden {
             position: absolute !important;
@@ -51,152 +177,580 @@
             padding: 0 !important;
             margin: -1px !important;
             overflow: hidden !important;
-            clip: rect(0,0,0,0) !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
             border: 0 !important;
         }
-        .guest-list-manual { display: none; }
+        .guest-list-manual {
+            margin-top: 24px;
+            padding: 24px;
+            background: #F8FAFC;
+            border-radius: 12px;
+            border: 1px solid #E2E8F0;
+        }
         .guest-entry {
             display: flex;
-            gap: 0.75rem;
             align-items: center;
-            margin-bottom: 1rem;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #E2E8F0;
         }
-        .icon-btn {
-            background-color: var(--secondary); color: var(--secondary-foreground); border: 1px solid var(--border);
-            width: 38px; height: 38px; border-radius: var(--radius);
+        /* Guest Management Card */
+        .guest-management-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         }
-        .icon-btn.remove { background-color: hsl(0, 80%, 95%); color: var(--destructive); border-color: hsl(0,80%,85%);}
-        .icon-btn:hover { background-color: var(--border); }
-        .icon-btn.remove:hover { background-color: hsl(0, 80%, 90%); }
-        #guestListCSV { display: none; }
-        .spinner {
-            display: none; width: 20px; height: 20px;
-            border: 3px solid var(--secondary); border-top: 3px solid var(--primary);
-            border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .voicevite-title { font-weight: 700; letter-spacing:-0.05em; font-size:2.25rem; color: var(--foreground); }
-        .step-title { font-weight: 600; font-size:1.5rem; color: var(--foreground); letter-spacing: -0.025em;}
-        .form-label { font-weight: 500; color: var(--card-foreground); }
-        .form-control, .form-select {
-            background-color: var(--background); /* Match body background for inputs */
-            border-color: var(--border);
-            border-radius: var(--radius);
-            padding: 0.625rem 1rem; /* 10px 16px */
-            font-size: 0.9375rem; /* 15px */
-        }
-        /* ShadCN-style selection card and manual entry */
-        .selection-card {
-            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-            border: 1px solid var(--border);
-            border-radius: var(--radius) !important;
-            transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
-            min-height: 100px !important;
+
+        .guest-management-header {
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            padding: 1rem !important;
+            margin-bottom: 20px;
+        }
+
+        .guest-management-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #0F172A;
+        }
+
+        .guest-count-badge {
+            background: #F1F5F9;
+            border-radius: 16px;
+            padding: 6px 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        .guest-count-badge span {
+            font-weight: 600;
+            color: #0F172A;
+        }
+
+        .guest-management-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .btn-add-guest,
+        .btn-import-csv {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
-            background-color: var(--card);
+            transition: all 0.2s;
         }
-        .selection-card-content {
+
+        .btn-add-guest {
+            background: #2563EB;
+            color: white;
+            border: 1px solid #2563EB;
+        }
+
+        .btn-add-guest:hover {
+            background: #1D4ED8;
+            border-color: #1D4ED8;
+        }
+
+        .btn-import-csv {
+            background: #FFFFFF;
+            color: #2563EB;
+            border: 1px solid #E2E8F0;
+        }
+
+        .btn-import-csv:hover {
+            background: #F8FAFC;
+            border-color: #CBD5E1;
+        }
+
+        .guest-entries {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            text-align: center;
+            gap: 8px;
+            margin-bottom: 16px;
         }
-        .radio-group {
-            display: flex;
-            flex-direction: row;
-            gap: 1rem;
-        }
-        .form-group.full-width, #guestListManual {
-            grid-column: 1 / -1;
-            width: 100%;
-        }
+
         .guest-entry {
-            display: flex;
-            gap: 0.75rem;
-            align-items: center;
-            margin-bottom: 1rem;
+            position: relative;
+            background: #F8FAFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 16px 40px 16px 16px;
+            margin-bottom: 8px;
         }
-        .btn-icon {
+
+        .guest-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .guest-name {
+            color: #1E293B;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .guest-phone {
+            color: #64748B;
+            font-size: 13px;
+        }
+
+        .remove-guest-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #FEE2E2;
+            border: none;
+            color: #DC2626;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 2.25rem;
-            height: 2.25rem;
-            background: var(--secondary);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
+            cursor: pointer;
             padding: 0;
+        }
+
+        .remove-guest-btn:hover {
+            background: #FECACA;
+        }
+
+        .add-guest-container {
+            background: #F8FAFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .add-guest-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .add-guest-row input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            font-size: 14px;
+            height: 40px;
+            box-sizing: border-box;
+            background: white;
+            min-width: 0; /* Allows inputs to shrink below their default minimum width */
+        }
+
+        .guest-entry input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #FFFFFF;
+        }
+
+        .guest-entry input:focus {
+            outline: none;
+            border-color: #2563EB;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .guest-helper-text {
+            color: #64748B;
+            font-size: 12px;
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .btn-add {
+            background: #2563EB;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            height: 40px;
+            width: 40px;
+            min-width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            font-size: 1.25rem;
-            color: var(--secondary-foreground);
-            transition: background-color 0.15s, border-color 0.15s;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
         }
-        .btn-icon.add { color: var(--primary); }
-        .btn-icon.remove { color: var(--destructive); }
-        .btn-icon:hover { background: hsl(210, 40%, 93.1%); }
-        div.progress.rounded-pill.w-75 {
-            height: 8px !important;
-            background-color: #e9ecef !important;
-            padding: 0 !important;
-            overflow: hidden !important;
-            margin-left: auto;
-            margin-right: auto;
+
+        .btn-add:hover {
+            background: #1D4ED8;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        div.progress.rounded-pill.w-75 > .progress-bar.bg-gradient {
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-            color: #fff !important;
-            text-align: center !important;
-            white-space: nowrap !important;
-            background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%) !important;
-            margin: 0 !important;
-            gap: 0 !important;
-            transition: width .6s ease !important;
+
+        .btn-add:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .form-actions-motiff {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 32px;
+        }
+        .btn-motiff {
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-family: 'Hind', sans-serif;
+        }
+        .btn-back-motiff {
+            background: #FFFFFF;
+            color: #020817;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Hind', sans-serif;
+            height: 40px;
+        }
+        .btn-back-motiff:hover {
+            background: #F8FAFC;
+            border-color: #CBD5E1;
+        }
+        .btn-next-motiff {
+            background-color: #4285F4;
+            color: #FFFFFF;
+        }
+        .btn-next-motiff:hover {
+            background-color: #3367D6;
+            box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+        }
+        .btn-next-motiff:disabled {
+            background-color: #E8EAED;
+            color: #9AA0A6;
+            cursor: not-allowed;
+        }
+        .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #4285F4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .flash-messages {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
         .flash-messages li {
-            padding: 0.75rem 1rem;
-            border-radius: var(--radius);
-            font-size: 0.875rem;
-            border: 1px solid transparent;
-        }
-        .flash-error {
-            background-color: hsl(0 72.2% 95.1%);
-            color: hsl(0 84.2% 60.2%);
-            border-color: hsl(0 72.2% 85.1%);
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            font-weight: 500;
         }
         .flash-success {
-            background-color: hsl(142.1 70.6% 95.1%);
-            color: hsl(142.1 76.2% 36.3%);
-            border-color: hsl(142.1 70.6% 85.1%);
+            background-color: #E8F5E8;
+            color: #137333;
+            border: 1px solid #CEEAD6;
         }
-        .flash-info {
-            background-color: hsl(210 80% 95.1%);
-            color: hsl(210 80% 30.3%);
-            border-color: hsl(210 80% 85.1%);
+        .flash-error {
+            background-color: #FCE8E6;
+            color: #C5221F;
+            border: 1px solid #F9DEDC;
+        }
+        .flash-warning {
+            background-color: #FEF7E0;
+            color: #B06000;
+            border: 1px solid #FEEFC3;
+        }
+        
+        /* Input Method Selection Styles */
+        .input-method-container {
+            margin: 8px 0 16px;
+        }
+
+        .input-method-options {
+            display: flex;
+            flex-direction: row;
+            gap: 12px;
+            max-width: 800px;
+            margin: 0 auto 20px;
+        }
+        
+        .input-method-option {
+            flex: 1;
+            min-width: 0;
+            cursor: pointer;
+        }
+
+        .input-method-option input[type="radio"]:checked + .input-method-card {
+            border-color: #2563EB;
+            background-color: #F8FAFF;
+        }
+
+        .input-method-option input[type="radio"]:checked + .input-method-card .check-circle {
+            background-color: #2563EB;
+            border-color: #2563EB;
+        }
+
+        .input-method-card {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 12px 16px;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            background-color: white;
+            transition: all 0.2s ease;
+            height: auto;
+            box-sizing: border-box;
+        }
+
+        .input-method-card:hover {
+            border-color: #2563EB;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+        }
+
+        .input-method-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+            margin-bottom: 0;
+        }
+
+        .input-method-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .input-method-title {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            color: #0F172A;
+            margin-bottom: 2px;
+        }
+
+        .input-method-description {
+            display: block;
+            font-size: 12px;
+            color: #64748B;
+        }
+
+        .input-method-check {
+            margin-left: 12px;
+            padding-top: 0;
+            width: auto;
+            display: flex;
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        .check-circle {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #E2E8F0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .file-input-wrapper {
+            border: 1px dashed #DADCE0;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #F8F9FA;
+        }
+
+        .file-input-wrapper:hover {
+            border-color: #4285F4;
+            background-color: rgba(66, 133, 244, 0.05);
+        }
+        .file-input-text {
+            color: #5F6368;
+            font-size: 14px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        /* Decorative elements */
+        .deco-1 {
+            position: fixed;
+            top: 10%;
+            left: 5%;
+            width: 100px;
+            height: 100px;
+            background-color: #F0F9FF;
+            border-radius: 24px;
+            transform: rotate(15deg);
+            z-index: 0;
+            opacity: 0.8;
+        }
+        .deco-2 {
+            position: fixed;
+            top: 15%;
+            right: 10%;
+            width: 80px;
+            height: 80px;
+            background-color: #FEF2F2;
+            border-radius: 20px;
+            transform: rotate(-10deg);
+            z-index: 0;
+            opacity: 0.8;
+        }
+        .deco-3 {
+            position: fixed;
+            bottom: 20%;
+            left: 7%;
+            width: 120px;
+            height: 120px;
+            background-color: #F5F3FF;
+            border-radius: 30px;
+            transform: rotate(20deg);
+            z-index: 0;
+            opacity: 0.7;
+        }
+        .deco-4 {
+            position: fixed;
+            bottom: 15%;
+            right: 8%;
+            width: 100px;
+            height: 100px;
+            background-color: #F0FDF4;
+            border-radius: 25px;
+            transform: rotate(-15deg);
+            z-index: 0;
+            opacity: 0.8;
+        }
+        /* Decorative elements */
+        .deco-1 {
+            position: fixed;
+            top: 150px;
+            left: 100px;
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.25) 0%, rgba(59, 130, 246, 0.1) 100%);
+            border-radius: 20px;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .deco-2 {
+            position: fixed;
+            top: 200px;
+            right: 70px;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%);
+            border-radius: 20px;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .deco-3 {
+            position: fixed;
+            bottom: 150px;
+            left: 80px;
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.1) 100%);
+            border-radius: 20px;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .deco-4 {
+            position: fixed;
+            bottom: 100px;
+            right: 90px;
+            width: 110px;
+            height: 110px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.1) 100%);
+            border-radius: 20px;
+            z-index: 0;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <div class="form-container mx-auto" style="max-width: 640px; width:100%; margin-top: 2rem; margin-bottom: 2rem;">
-            <header class="mb-4 text-center">
-                <h1 class="voicevite-title mb-2">VoiceVite</h1>
-                <div class="d-flex align-items-center justify-content-center mb-4">
-                    <div class="progress rounded-pill w-75">
-                        <div class="progress-bar bg-gradient" role="progressbar" style="width: 66%;"></div>
-                    </div>
-                </div>
-            </header>
-            <main>
-                <h2 class="step-title mb-2">Step 3: Event Details</h2>
-                <p class="subtitle mb-4">Provide the remaining details and guest information.</p>
+    <!-- Decorative background elements -->
+    <div class="deco-1"></div>
+    <div class="deco-2"></div>
+    <div class="deco-3"></div>
+    <div class="deco-4"></div>
+    
+    <div class="container" style="position: relative; z-index: 1; width: 100%;">
+        <div style="width: 100%; max-width: 800px; margin: 0 auto; padding: 0 24px; box-sizing: border-box;">
+        <!-- Header -->
+        <div class="header-title-motiff" style="color: #2563EB; font-size: 36px; font-weight: 600; line-height: 40px; text-align: center; margin-top: 28px; margin-bottom: 8px; z-index: 1; font-family: 'Hind', sans-serif;">
+            VoiceVite
+        </div>
+        <div style="color: #64748B; font-size: 16px; font-weight: 400; line-height: 24px; text-align: center; margin-bottom: 28px;">
+            Create your event in minutes
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="progress-steps-container">
+            <div class="step-indicators">
+                <div class="progress-step-motiff">1</div>
+                <div class="step-line active"></div>
+                <div class="progress-step-motiff active">2</div>
+                <div class="step-line"></div>
+                <div class="progress-step-motiff">3</div>
+            </div>
+            <div class="step-labels">
+                <div class="step-label active" style="text-align: left;">Event Type</div>
+                <div class="step-label active">Event Details</div>
+                <div class="step-label">Customize</div>
+            </div>
+        </div>
+
+        <!-- Form Card -->
+        <div class="form-card-motiff">
+            <h1 class="form-title-motiff">Event Details</h1>
+            <p class="form-subtitle-motiff">Tell us more about your event</p>
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         <div class="mb-3">
@@ -209,7 +763,7 @@
                     {% endif %}
                 {% endwith %}
 
-                <form method="POST" action="{{ url_for('event_details_step2') }}" enctype="multipart/form-data" id="eventForm" autocomplete="off">
+            <form method="POST" action="{{ url_for('event_details_step2') }}" enctype="multipart/form-data" id="eventForm" autocomplete="off">
                     <div class="row g-4">
                         <div class="col-md-6">
                             <label for="location" class="form-label">Location <span class="text-danger">*</span></label> 
@@ -227,7 +781,7 @@
                         </div>
                         <div class="col-md-6">
                             <label for="rsvp_deadline" class="form-label">RSVP Deadline <span class="text-danger">*</span></label> 
-                            <input type="date" id="rsvp_deadline" name="rsvp_deadline" class="form-control datetimepicker" required>
+                            <input type="text" id="rsvp_deadline" name="rsvp_deadline" class="form-control datepicker" placeholder="Select date" required>
                             <div class="invalid-feedback">This field is required.</div>
                             <small class="form-text text-muted">Must be before the event date.</small> 
                         </div>
@@ -249,290 +803,312 @@
                             </select>
                         </div>
                     </div>
-                    <!-- This new block should be placed before the div with class "mt-4 mb-3" that contains guest input method selection -->
-                    <div class="mt-4 mb-3">
-                        <label class="form-label">Add Guests <span class="text-danger">*</span></label> 
-                        <div class="d-flex flex-column flex-md-row gap-3 justify-content-center align-items-stretch mt-2">
-                            <label class="voice-card selectable-card" tabindex="0">
-                                <input type="radio" name="guest_input_method" value="manual" class="visually-hidden card-radio" onclick="toggleGuestInput('manual')" autocomplete="off">
-                                <div class="voice-card-content">
-                                    <span class="fw-semibold fs-5 mb-1" style="color: var(--primary);">Manual Entry</span>
-                                    <span class="fs-6" style="color: var(--muted-foreground);">Enter guest details one by one 🧑‍💼</span>
+                <div class="mt-4 mb-3">
+                    <label class="form-label">Add Guests <span class="text-danger">*</span></label> 
+                    <div class="input-method-container">
+                        <div class="input-method-options">
+                            <label class="input-method-option" tabindex="0">
+                                <input type="radio" name="guest_input_method" value="manual" class="visually-hidden" onclick="toggleGuestInput('manual')" autocomplete="off" checked>
+                                <div class="input-method-card">
+                                    <div class="input-method-icon" style="background-color: #E6F0FF;">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="#2563EB"/>
+                                        </svg>
+                                    </div>
+                                    <div class="input-method-details">
+                                        <span class="input-method-title">Manual Entry</span>
+                                        <span class="input-method-description">Enter guest details one by one</span>
+                                    </div>
+                                    <div class="input-method-check">
+                                        <div class="check-circle">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M9 16.17L4.83 12L3.41 13.41L9 19L21 7L19.59 5.59L9 16.17Z" fill="white"/>
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </div>
                             </label>
-                            <label class="voice-card selectable-card" tabindex="0">
-                                <input type="radio" name="guest_input_method" value="csv" class="visually-hidden card-radio" onclick="toggleGuestInput('csv')" autocomplete="off">
-                                <div class="voice-card-content">
-                                    <span class="fw-semibold fs-5 mb-1" style="color: var(--primary);">CSV Upload</span>
-                                    <span class="fs-6" style="color: var(--muted-foreground);">Upload a CSV file with guest details 📄</span>
+                            <label class="input-method-option" tabindex="0">
+                                <input type="radio" name="guest_input_method" value="csv" class="visually-hidden" onclick="toggleGuestInput('csv')" autocomplete="off">
+                                <div class="input-method-card">
+                                    <div class="input-method-icon" style="background-color: #E4F4FF;">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM16 18H8V16H16V18ZM16 14H8V12H16V14ZM13 9V3.5L18.5 9H13Z" fill="#2563EB"/>
+                                        </svg>
+                                    </div>
+                                    <div class="input-method-details">
+                                        <span class="input-method-title">CSV Upload</span>
+                                        <span class="input-method-description">Upload a CSV file with guest details</span>
+                                    </div>
+                                    <div class="input-method-check">
+                                        <div class="check-circle">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M9 16.17L4.83 12L3.41 13.41L9 19L21 7L19.59 5.59L9 16.17Z" fill="white"/>
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </div>
                             </label>
                         </div>
                     </div>
+                </div>
 
-                    <div class="guest-list-manual mt-4" id="guestListManual">
-                         <label class="form-label mb-2">Manual Guest Entries</label>
-                        <div id="guestEntries">
-                            <div class="guest-entry row g-2 align-items-center">
-                                <div class="col">
-                                    <input type="text" id="guest_name_0" name="guest_name[]" placeholder="Guest Name *" class="form-control" required>
-                                </div>
-                                <div class="col">
-                                    <input type="text" id="guest_phone_0" name="guest_phone[]" placeholder="Guest Phone (+XXXXXXXXXX) *" class="form-control" required>
-                                </div>
-                                <div class="col-auto">
-                                    <button type="button" class="icon-btn remove" onclick="removeGuestEntry(this)">−</button>
-                                </div>
-                                <div class="col-auto">
-                                    <button type="button" class="icon-btn" onclick="addGuestEntry()">+</button>
-                                </div>
+                    <!-- Guest Management Card -->
+                    <div class="guest-management-card">
+                        <div class="guest-management-header">
+                            <h3 class="guest-management-title">Guest Management</h3>
+                            <div class="guest-count-badge">
+                                <span id="guestCount">0</span> Guests
                             </div>
                         </div>
-                    </div>
-
-                    <div class="mt-4" id="guestListCSV">
-                        <label for="guest_list_file" class="form-label">Guest List (CSV)</label>
-                        <div class="file-input-wrapper" onclick="document.getElementById('guest_list_file').click();">
-                            <input type="file" id="guest_list_file" name="guest_list" accept=".csv">
-                            <span class="file-input-text">Drag & drop a CSV file or click to upload</span>
+                        
+                        <div class="guest-management-actions">
+                            <button type="button" class="btn-add-guest" onclick="addGuestEntry()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Add Guest
+                            </button>
                         </div>
-                        <small class="form-text text-muted mt-1">Format: Name,Phone (e.g., Priya Sharma,+919876543210)</small>
-                    </div>
 
-                    <div style="height: 2.5rem;"></div> 
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="{{ url_for('voice_selection') }}" class="btn btn-link">Back</a>
-                        <button type="submit" class="btn btn-primary" id="submitButton">
-                            Create Invitation
-                            <div class="spinner" id="submitSpinner"></div>
-                        </button>
+                        <div id="guestEntries" class="guest-entries">
+                            <!-- Guest entries will be added here -->
+                        </div>
                     </div>
-                </form>
-            </main>
+                    
+                    <script>
+                        // Initialize with manual entry by default
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Add first guest entry by default
+                            addGuestEntry();
+                            
+                            // Set manual entry as default
+                            document.querySelector('input[value="manual"]').checked = true;
+                        });
+                    </script>
+
+                <div class="form-actions-motiff">
+                    <a href="{{ url_for('voice_selection') }}" class="btn-motiff btn-back-motiff">Back</a>
+                    <button type="submit" class="btn-motiff btn-next-motiff" id="submitButton">
+                        Create Invitation
+                        <div class="spinner" id="submitSpinner"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer-motiff" style="width: 100%; text-align: center; margin: 32px 0 16px; padding: 0 24px;">
+            <p class="footer-text-motiff" style="color: #64748B; font-size: 14px; margin: 0;">© 2025 VoiceVite. All rights reserved.</p>
+        </footer>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var form = document.getElementById('eventForm');
-        if (form) {
-            form.addEventListener('submit', function(event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }
-                form.classList.add('was-validated');
-            }, false);
+        // Add any custom JavaScript here if needed
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Flatpickr for date inputs
+            flatpickr("input[type='datetime-local']", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                minDate: "today"
+            });
+        });
+    </script>
+    <script>
+        // Guest management functionality
+        function updateGuestCount() {
+            const guestCount = document.getElementById('guestCount');
+            if (guestCount) {
+                const count = document.getElementById('guestEntries').children.length;
+                guestCount.textContent = count === 1 ? '1 guest' : `${count} guests`;
+            }
         }
-    });
 
-    // All JS from previous version of event_details_step2.html is assumed to be here and correct.
-    // For brevity, not repeating the full JS block if it hasn't changed from the one that handled form logic,
-    // selectable cards, guest entry additions/removals, and async submission.
-    // Ensure the JS provided in the previous response for this file is used.
-    document.addEventListener('DOMContentLoaded', function() {
-        // JavaScript for selectable cards
-        document.querySelectorAll('.selectable-card').forEach(function(card) {
-            const radio = card.querySelector('input.card-radio');
-            if (!radio) return;
+        // Function removed as it's now handled directly in addGuestEntry
 
-            card.addEventListener('click', function(e) {
-                if (e.target === radio) return;
+        function addGuestEntry(name = '', mobile = '') {
+            const nameInput = name === '' ? document.querySelector('.add-guest-input') : { value: name };
+            const mobileInput = mobile === '' ? document.querySelector('.add-mobile-input') : { value: mobile };
+            
+            name = nameInput?.value?.trim() || '';
+            mobile = mobileInput?.value?.trim() || '';
+            
+            if (name === '' || mobile === '') {
+                if (name === '' && mobile === '') return; // Don't add empty entries on init
+                alert('Please enter both name and mobile number');
+                return;
+            }
+            
+            const guestEntries = document.getElementById('guestEntries');
+            const guestEntry = document.createElement('div');
+            guestEntry.className = 'guest-entry';
+            guestEntry.innerHTML = `
+                <div class="guest-info">
+                    <span class="guest-name">${name}</span>
+                    <span class="guest-phone">${mobile}</span>
+                </div>
+                <button type="button" class="remove-guest-btn" onclick="this.parentElement.remove(); updateGuestCount();">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <input type="hidden" name="guest_name[]" value="${name}">
+                <input type="hidden" name="guest_phone[]" value="${mobile}">
+            `;
+            guestEntries.appendChild(guestEntry);
+            updateGuestCount();
+            
+            // Clear the input fields
+            if (nameInput) nameInput.value = '';
+            if (mobileInput) mobileInput.value = '';
+            
+            // Focus back to name input
+            document.querySelector('.add-guest-input')?.focus();
+        }
 
-                document.querySelectorAll('.selectable-card').forEach(function(c) {
-                    c.classList.remove('selected');
-                    const r = c.querySelector('input.card-radio');
-                    if(r) r.checked = false;
-                });
+        function toggleGuestInput(method) {
+            const guestManagementCard = document.querySelector('.guest-management-card');
+            
+            if (method === 'manual') {
+                // Show manual entry fields
+                guestManagementCard.innerHTML = `
+                    <div class="guest-management-header">
+                        <h3 class="guest-management-title">Guest Management</h3>
+                        <div class="guest-count-badge">
+                            <span id="guestCount">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="add-guest-container">
+                        <div class="add-guest-row">
+                            <input type="text" class="add-guest-input" placeholder="Name">
+                            <input type="tel" class="add-mobile-input" placeholder="Mobile Number">
+                            <button type="button" class="btn-add" onclick="addGuestEntry()" title="Add Guest">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
 
-                card.classList.add('selected');
-                radio.checked = true;
+                    <div id="guestEntries" class="guest-entries">
+                        <!-- Guest entries will be added here -->
+                    </div>
+                `;
                 
-                if (radio.onclick) {
-                    radio.click(); 
-                }
+                // Add event listeners for Enter key
+                guestManagementCard.querySelector('.add-guest-input')?.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') addGuestEntry();
+                });
+                
+                guestManagementCard.querySelector('.add-mobile-input')?.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') addGuestEntry();
+                });
+                
+                // Focus on name input when the section loads
+                guestManagementCard.querySelector('.add-guest-input')?.focus();
+            } else {
+                // Show CSV upload field
+                guestManagementCard.innerHTML = `
+                    <div class="guest-management-header">
+                        <h3 class="guest-management-title">Upload Guest List</h3>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="file-input-wrapper" onclick="document.getElementById('guest_list_file').click();">
+                            <input type="file" id="guest_list_file" name="guest_list" accept=".csv" style="display: none;">
+                            <div class="text-center">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 12px;">
+                                    <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M17 8L12 3L7 8" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M12 3V15" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <h4 style="color: #1E293B; margin-bottom: 8px; font-size: 16px;">Upload your guest list</h4>
+                                <p style="color: #64748B; font-size: 14px; margin-bottom: 16px;">Drag & drop a CSV file or click to browse</p>
+                                <div style="background: #F1F5F9; border-radius: 6px; padding: 8px 12px; display: inline-block; font-size: 12px; color: #475569;">
+                                    CSV Format: Name, Phone (e.g., Priya Sharma, +919876543210)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Flatpickr for RSVP deadline (date only)
+            const rsvpDateInput = document.getElementById('rsvp_deadline');
+            if (rsvpDateInput) {
+                flatpickr(rsvpDateInput, {
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "F j, Y",
+                    altInputClass: 'form-control',
+                    static: false,
+                    position: 'auto',
+                    theme: 'light',
+                    onOpen: function(selectedDates, dateStr, instance) {
+                        const calendar = instance.calendarContainer;
+                        calendar.style.opacity = '1';
+                        calendar.style.visibility = 'visible';
+                        const inputRect = rsvpDateInput.getBoundingClientRect();
+                        calendar.style.position = 'absolute';
+                        calendar.style.top = (inputRect.bottom + window.scrollY) + 'px';
+                        calendar.style.left = (inputRect.left + window.scrollX) + 'px';
+                        calendar.style.zIndex = '99999';
+                    },
+                    onReady: function(selectedDates, dateStr, instance) {
+                        instance.calendarContainer.style.visibility = 'hidden';
+                        instance.calendarContainer.style.opacity = '0';
+                        instance.calendarContainer.style.position = 'absolute';
+                    }
+                });
+            }
+            
+            // Initialize Flatpickr for date-time inputs
+            flatpickr("input[type='datetime-local']", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                minDate: "today",
+                time_24hr: true
             });
-            card.addEventListener('keydown', function(e) {
-                if (e.key === ' ' || e.key === 'Enter') {
-                    e.preventDefault();
-                    card.click();
-                }
-            });
-             // Initial check for pre-selected card
-             if (radio.checked) {
-                card.classList.add('selected');
-                if (radio.onclick) radio.click(); // Trigger initial toggle
+
+            // Set default to manual entry
+            document.querySelector('input[value="manual"]').checked = true;
+            toggleGuestInput('manual');
+
+            // Form validation
+            const form = document.getElementById('eventForm');
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    const guestInputMethod = document.querySelector('input[name="guest_input_method"]:checked').value;
+                    
+                    if (guestInputMethod === 'manual') {
+                        const guestEntries = document.getElementById('guestEntries').children;
+                        if (guestEntries.length === 0) {
+                            event.preventDefault();
+                            alert('Please add at least one guest.');
+                            return;
+                        }
+                    } else {
+                        const fileInput = document.getElementById('guest_list_file');
+                        if (!fileInput.files || fileInput.files.length === 0) {
+                            event.preventDefault();
+                            alert('Please upload a CSV file with guest details.');
+                            return;
+                        }
+                    }
+
+                    // Show loading state
+                    const submitButton = document.getElementById('submitButton');
+                    const submitSpinner = document.getElementById('submitSpinner');
+                    if (submitButton) submitButton.disabled = true;
+                    if (submitSpinner) submitSpinner.style.display = 'inline-block';
+                });
             }
         });
-
-        window.toggleGuestInput = function(method) {
-            const manualSection = document.getElementById('guestListManual');
-            const csvSection = document.getElementById('guestListCSV');
-            const manualRequiredInputs = manualSection.querySelectorAll('input.form-control[name^="guest_name"], input.form-control[name^="guest_phone"]');
-            const csvInput = document.getElementById('guest_list_file');
-
-            if (method === 'manual') {
-                manualSection.style.display = 'block';
-                csvSection.style.display = 'none';
-                if(csvInput) csvInput.removeAttribute('required');
-                manualRequiredInputs.forEach(input => input.setAttribute('required', 'required'));
-                if (document.querySelectorAll('#guestEntries .guest-entry').length === 0 && manualSection.style.display === 'block') {
-                     addGuestEntry(); 
-                } else {
-                    const firstGuestName = document.getElementById('guest_name_0');
-                    const firstGuestPhone = document.getElementById('guest_phone_0');
-                    if(firstGuestName) firstGuestName.setAttribute('required', 'required');
-                    if(firstGuestPhone) firstGuestPhone.setAttribute('required', 'required');
-                }
-            } else { 
-                manualSection.style.display = 'none';
-                csvSection.style.display = 'block';
-                if(csvInput) csvInput.setAttribute('required', 'required');
-                manualRequiredInputs.forEach(input => input.removeAttribute('required'));
-            }
-        }
-
-        let guestEntryCounter = document.querySelectorAll('#guestEntries .guest-entry').length;
-
-        window.addGuestEntry = function() {
-            const guestEntries = document.getElementById('guestEntries');
-            const newEntryId = guestEntryCounter; 
-
-            const newEntry = document.createElement('div');
-            newEntry.className = 'guest-entry row g-2 align-items-center';
-            newEntry.innerHTML = `
-                <div class="col">
-                    <input type="text" id="guest_name_${newEntryId}" name="guest_name[]" placeholder="Guest Name *" class="form-control" required>
-                </div>
-                <div class="col">
-                    <input type="text" id="guest_phone_${newEntryId}" name="guest_phone[]" placeholder="Guest Phone (+XXXXXXXXXX) *" class="form-control" required>
-                </div>
-                <div class="col-auto">
-                    <button type="button" class="icon-btn remove" onclick="removeGuestEntry(this)">−</button>
-                </div>
-                <div class="col-auto">
-                    <button type="button" class="icon-btn" onclick="addGuestEntry()">+</button>
-                </div>
-            `;
-            
-            const currentEntries = guestEntries.children;
-            if (currentEntries.length > 0) {
-                const previousLastEntry = currentEntries[currentEntries.length - 1];
-                const addButtonOnPrevious = previousLastEntry.querySelector('button.icon-btn:not(.remove)');
-                if (addButtonOnPrevious) {
-                    addButtonOnPrevious.style.display = 'none';
-                }
-            }
-            guestEntries.appendChild(newEntry);
-            guestEntryCounter++; 
-        }
-
-        window.removeGuestEntry = function(button) {
-            const guestEntries = document.getElementById('guestEntries');
-            if (guestEntries.children.length > 1) {
-                const entryToRemove = button.closest('.guest-entry');
-                if (entryToRemove) {
-                    entryToRemove.remove();
-                }
-                const lastEntry = guestEntries.lastElementChild;
-                if (lastEntry) {
-                    const addButtonOnLast = lastEntry.querySelector('button.icon-btn:not(.remove)');
-                    if (addButtonOnLast) {
-                         addButtonOnLast.style.display = 'inline-flex';
-                    }
-                }
-            } else {
-                alert('You must have at least one guest entry for manual input.');
-            }
-        }
-        
-        function updateInitialAddButtonVisibility() {
-            const guestEntriesContainer = document.getElementById('guestEntries');
-            const entries = guestEntriesContainer.querySelectorAll('.guest-entry');
-            if (entries.length === 0) {
-                return; 
-            }
-            entries.forEach((entry, index) => {
-                const addButton = entry.querySelector('.icon-btn:not(.remove)');
-                if (addButton) {
-                    if (index === entries.length - 1) {
-                        addButton.style.display = 'inline-flex';
-                    } else {
-                        addButton.style.display = 'none';
-                    }
-                }
-            });
-        }
-        updateInitialAddButtonVisibility(); 
-
-        const defaultManualRadio = document.querySelector('input.card-radio[value="manual"]:checked');
-        if (defaultManualRadio) {
-            toggleGuestInput('manual');
-        }
-
-
-        const eventForm = document.getElementById('eventForm');
-        if(eventForm) {
-            eventForm.addEventListener('submit', function(e) { // Removed async
-                // No e.preventDefault() here at the top
-
-                const guestInputMethodRadio = document.querySelector('input.card-radio:checked');
-                if (!guestInputMethodRadio) {
-                    alert('Please select a guest input method (Manual Entry or CSV Upload).');
-                    e.preventDefault(); // Prevent submission
-                    return;
-                }
-                const guestInputMethod = guestInputMethodRadio.value;
-                const guestEntriesContainer = document.getElementById('guestEntries');
-
-                if (guestInputMethod === 'manual') {
-                    const guestNameInputs = guestEntriesContainer.querySelectorAll('input[name="guest_name[]"]');
-                    const guestPhoneInputs = guestEntriesContainer.querySelectorAll('input[name="guest_phone[]"]');
-                    
-                    if (guestNameInputs.length === 0 && guestEntriesContainer.children.length > 0) { 
-                         alert('Please add guest details or use CSV upload.');
-                         e.preventDefault(); // Prevent submission
-                         return;
-                    }
-                    if (guestEntriesContainer.children.length === 0 && guestNameInputs.length === 0 ) {
-                        alert('Please add at least one guest for manual entry or choose CSV Upload.');
-                        e.preventDefault(); // Prevent submission
-                        return;
-                    }
-
-                    for (let i = 0; i < guestNameInputs.length; i++) {
-                        if (!guestNameInputs[i].value || !guestPhoneInputs[i].value) {
-                            alert('Please fill in all guest names and phone numbers for manual entries.');
-                            e.preventDefault(); // Prevent submission
-                            return;
-                        }
-                        if (!guestPhoneInputs[i].value.match(/^\+[1-9]\d{1,14}$/)) {
-                            alert('Phone numbers must be in E.164 format (e.g., +919876543210). Please correct entry: ' + guestPhoneInputs[i].value);
-                            e.preventDefault(); // Prevent submission
-                            return;
-                        }
-                    }
-                } else { // guestInputMethod === 'csv'
-                    const csvInput = document.getElementById('guest_list_file');
-                    if (csvInput && !csvInput.files.length && csvInput.hasAttribute('required')) {
-                        alert('Please upload a CSV file.');
-                        e.preventDefault(); // Prevent submission
-                        return;
-                    }
-                }
-
-                // If all validations pass, the form will submit normally.
-                // Show spinner and disable button to prevent double submission.
-                const submitButton = document.getElementById('submitButton');
-                const submitSpinner = document.getElementById('submitSpinner');
-                if(submitButton) submitButton.disabled = true;
-                if(submitSpinner) submitSpinner.style.display = 'inline-block';
-
-                // No e.preventDefault() here means standard form submission will proceed.
-                // The fetch call and related try/catch/finally block are removed.
-            });
-        }
-    });
     </script>
 </body>
 </html>

@@ -6,6 +6,7 @@ pyairtable
 psycopg2-binary
 SQLAlchemy
 Flask-SQLAlchemy
+Flask-WTF
 # For Grok or other LLMs, a specific client might be needed, or 'requests' for generic API calls.
 # Add specific LLM client if known, e.g., openai, anthropic
 
@@ -15,3 +16,5 @@ pytest
 # Production WSGI Server (optional for initial setup, but good to list)
 gunicorn
 vapi
+
+google-genai

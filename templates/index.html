@@ -3,159 +3,423 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceVite</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Flatpickr CSS/JS for date/time pickers -->
+    <title>VoiceVite - Create Event</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="{{ url_for('static', filename='js/flatpickr-init.js') }}"></script>
-    <style>
-        /* ShadCN-inspired event details step 1 */
-        .centered-text { text-align: center; }
-        .form-group label { font-weight: 500; color: var(--foreground); }
-        .form-group input, .form-group select {
-            background-color: var(--background);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 0.625rem 1rem;
-            font-size: 0.875rem;
-            color: var(--foreground);
+    <style id="flatpickr-override">
+        /* Forceful overrides for flatpickr */
+        .flatpickr-calendar {
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+            z-index: 99999 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
-        div.progress.rounded-pill.w-75 {
-            height: 8px !important;
-            background-color: #e9ecef !important;
-            padding: 0 !important;
-            overflow: hidden !important;
-            margin-left: auto;
-            margin-right: auto;
+        .flatpickr-calendar:before, .flatpickr-calendar:after {
+            display: none !important;
         }
-        div.progress.rounded-pill.w-75 > .progress-bar.bg-gradient {
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-            color: #fff !important;
-            text-align: center !important;
-            white-space: nowrap !important;
-            background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%) !important;
-            margin: 0 !important;
-            gap: 0 !important;
-            transition: width .6s ease !important;
+        .flatpickr-calendar.open {
+            display: block !important;
+            opacity: 1 !important;
         }
-        .flash-messages li {
-            padding: 0.75rem 1rem;
-            border-radius: var(--radius);
-            font-size: 0.875rem;
-            border: 1px solid transparent;
+        .flatpickr-calendar.arrowTop:before, .flatpickr-calendar.arrowTop:after {
+            border-bottom-color: #FFFFFF !important;
         }
-        .flash-error {
-            background-color: hsl(0 72.2% 95.1%);
-            color: hsl(0 84.2% 60.2%);
-            border-color: hsl(0 72.2% 85.1%);
+        .flatpickr-day {
+            color: #1E293B !important;
+            border: none !important;
+            border-radius: 4px !important;
         }
-        .flash-success {
-            background-color: hsl(142.1 70.6% 95.1%);
-            color: hsl(142.1 76.2% 36.3%);
-            border-color: hsl(142.1 70.6% 85.1%);
+        .flatpickr-day.selected, 
+        .flatpickr-day.selected:hover, 
+        .flatpickr-day.selected:focus {
+            background: #2563EB !important;
+            border-color: #2563EB !important;
+            color: white !important;
+            box-shadow: none !important;
         }
-        .flash-info {
-            background-color: hsl(210 80% 95.1%);
-            color: hsl(210 80% 30.3%);
-            border-color: hsl(210 80% 85.1%);
+        .flatpickr-day.today {
+            border: 1px solid #2563EB !important;
+            background: #EFF6FF !important;
+        }
+        .flatpickr-day.today:hover {
+            background: #DBEAFE !important;
+        }
+        .flatpickr-time input, 
+        .flatpickr-time .flatpickr-time-separator, 
+        .flatpickr-time .flatpickr-am-pm {
+            color: #1E293B !important;
+        }
+        .flatpickr-time {
+            border-top: 1px solid #E2E8F0 !important;
         }
     </style>
+    <style>
+        /* Flatpickr overrides */
+        .flatpickr-calendar {
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+        }
+        .flatpickr-day {
+            color: #1E293B !important;
+        }
+        .flatpickr-day.selected, .flatpickr-day.selected:hover {
+            background: #2563EB !important;
+            border-color: #2563EB !important;
+        }
+        .flatpickr-time input, .flatpickr-time .flatpickr-time-separator, .flatpickr-time .flatpickr-am-pm {
+            color: #1E293B !important;
+        }
+        .flatpickr-day.today {
+            border-color: #2563EB !important;
+        }
+        .flatpickr-day.today:hover {
+            background: #EFF6FF !important;
+        }
+        
+        div {
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            border: 0;
+            padding: 0;
+            margin: 0;
+            position: relative;
+            font-family: 'Hind', sans-serif; /* Ensure Hind font is primary */
+        }
+        .layer { position: absolute; }
+        .image { 
+            flex-shrink: 0; 
+            background-repeat: no-repeat;
+        }
+        .inner-border {
+            position: relative;
+            border-radius: var(--border-radius, 0px);
+        }
+        .layer.inner-border { position: absolute; }
+        .inner-border::after {
+            content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            border-width: var(--border-width, 0px);
+            border-color: var(--border-color, transparent);
+            border-style: var(--border-style, solid);
+            border-radius: inherit;
+        }
+        .center-border {
+            position: relative;
+            border-radius: var(--border-radius, 0px);
+        }
+        .layer.center-border { position: absolute; }
+        .center-border::after {
+            content: ""; position: absolute;
+            top: calc(0px - var(--border-width, 0px) / 2);
+            left: calc(0px - var(--border-width, 0px) / 2);
+            right: calc(0px - var(--border-width, 0px) / 2);
+            bottom: calc(0px - var(--border-width, 0px) / 2);
+            border-width: var(--border-width, 0px);
+            border-color: var(--border-color, #000000);
+            border-style: var(--border-style, solid);
+            border-radius: calc(var(--border-radius, 0px) + var(--border-width, 0px) / 2);
+        }
+        /* Flash Message Styles */
+        .flash-messages ul { list-style-type: none; padding: 0; margin: 0 0 1rem 0; }
+        .flash-messages li { padding: 10px 15px; margin-bottom: 10px; border-radius: 8px; font-size: 14px; font-family: 'Hind', sans-serif; }
+        .flash-error { background-color: #fdecea; color: #93000a; border: 1px solid #f5c6cb; }
+        .flash-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        .flash-info { background-color: #cff4fc; color: #055160; border: 1px solid #b6effb; }
+
+        /* Basic styling for form elements to blend with Motiff design */
+        .input-container {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0; /* Default border */
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            min-height: 48px;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Smooth transition for focus */
+        }
+
+        .input-container.select-container {
+            /* Ensure consistent border for select containers, though .input-container should cover this */
+            /* border: 1px solid #E2E8F0; */ /* Already on .input-container, re-evaluate if needed */
+            direction: ltr; /* Ensure LTR for positioning context */
+        }
+
+        .input-container:focus-within {
+            border-color: #2563EB; /* Blue border on focus */
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); /* Subtle blue glow, adjust thickness via 3rd param */
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            height: 100%;
+            min-height: calc(48px - 2px); /* Adjust for container's border */
+            padding: 12px 13px;
+            border: none; /* Input's own border removed, container handles it */
+            background-color: transparent;
+            font-family: 'Hind', sans-serif;
+            font-size: 14px;
+            color: #020817;
+            box-sizing: border-box;
+            position: relative; 
+            z-index: 2; 
+            pointer-events: auto;
+            outline: none; /* Remove default browser focus outline */
+        }
+
+        .form-input::placeholder {
+            color: #94A3B8;
+            opacity: 1;
+        }
+
+        .form-select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            padding-right: 35px; 
+        }
+
+        .form-select option {
+            color: #020817;
+        }
+
+        .form-select option[value=""][disabled] {
+            color: #94A3B8;
+        }
+
+        .form-select:required:invalid {
+            color: #94A3B8;
+        }
+        
+        /* .input-container.select-container {} /* Not strictly needed if general .input-container handles border */
+
+        .select-container::after { /* This applies to the .input-container that has .select-container class */
+            left: auto; /* Ensure it's not accidentally positioned from the left */
+            content: '';
+            position: absolute;
+            right: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="16" viewBox="0 0 16 16"><g><path d="M8.4714 -0.471405C8.21106 -0.731752 7.78894 -0.731752 7.5286 -0.471404L4 3.05719L0.471405 -0.471405C0.211057 -0.731752 -0.211057 -0.731752 -0.471405 -0.471404C-0.731752 -0.211057 -0.731752 0.211057 -0.471404 0.471405L3.5286 4.4714Q3.57502 4.51783 3.62962 4.55431Q3.68421 4.59079 3.74488 4.61592Q3.80554 4.64105 3.86994 4.65386Q3.93434 4.66667 4 4.66667Q4.06566 4.66667 4.13006 4.65386Q4.19446 4.64105 4.25512 4.61592Q4.31578 4.59079 4.37038 4.55431Q4.42498 4.51783 4.4714 4.4714L8.47141 0.471404C8.73175 0.211057 8.73175 -0.211057 8.4714 -0.471405Z" fill-rule="evenodd" transform="matrix(1 0 0 1 4 6)" fill="rgb(2, 8, 23)"/></g></svg>'); /* Custom arrow, embedded */
+            background-size: cover;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+    </style>
 </head>
-<body> <div class="form-container mx-auto" style="max-width: 640px; width:100%; margin-top: 2rem; margin-bottom: 2rem;">
-        <header class="mb-4 text-center">
-            <h1 class="voicevite-title mb-2">VoiceVite</h1>
-            <div class="d-flex align-items-center justify-content-center mb-4">
-                <div class="progress rounded-pill w-75">
-                    <div class="progress-bar bg-gradient" role="progressbar" style="width: 0%;"></div>
+<body>
+<form method="POST" action="{{ url_for('index') }}" enctype="multipart/form-data" autocomplete="off" id="eventForm" novalidate>
+<div style="background: #FFFFFF; width: 100%; min-height: 100vh; font-style: normal; font-family: 'Hind', sans-serif; font-size: 14px; font-weight: 500; display: flex; flex-direction: column; align-items: center; padding: 20px 0; position: relative; overflow-x: hidden;">
+    <!-- Decorative Elements -->
+    <div style="position: absolute; top: 120px; left: 60px; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(96, 165, 250, 0.25) 0%, rgba(59, 130, 246, 0.1) 100%); z-index: 0;"></div>
+    <div style="position: absolute; top: 180px; right: 70px; width: 100px; height: 100px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%); z-index: 0;"></div>
+    <div style="position: absolute; bottom: 150px; left: 80px; width: 90px; height: 90px; background: linear-gradient(135deg, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.1) 100%); z-index: 0;"></div>
+    <div style="position: absolute; bottom: 100px; right: 90px; width: 110px; height: 110px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.1) 100%); z-index: 0;"></div>
+
+    <div style="color: #2563EB; font-size: 36px; font-weight: 600; line-height: 40px; text-align: center; margin-top: 28px; margin-bottom: 8px; z-index: 1;">
+        VoiceVite
+    </div>
+
+    <div style="width: 100%; max-width: 800px; padding: 0 10px; z-index: 1;"> 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages mb-3">
+                <ul>
+                {% for category, message in messages %}
+                    <li class="flash-{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    {% endwith %}
+    </div>
+
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; z-index: 1;">
+        <div style="color: #64748B; font-size: 16px; font-weight: 400; line-height: 24px; text-align: center;">
+            Create your event in minutes
+        </div>
+        <div style="margin-top: 28px; gap: 16px; display: flex; flex-direction: row; align-items: center;">
+            <div class="center-border" style="background: #2563EB; --border-radius: 9999px; display: flex; width: 40px; height: 40px; justify-content: center; align-items: center;">
+                <div class="image" style="background-image: url('https://static.motiffcontent.com/private/resource/image/1971c11655aa25f-9736fdd3-b97e-4673-a92c-12d7b12d6cb0.svg'); width: 6px; height: 24px; background-size: cover"></div>
+            </div>
+            <div class="image" style="background-image: url('https://static.motiffcontent.com/private/resource/image/1971c11655a560e-358b4140-2693-4fe3-be17-7f30b8ab3c38.svg'); width: 64px; height: 2px; background-size: cover"></div>
+            <div class="center-border" style="background: #F1F5F9; --border-radius: 9999px; display: flex; width: 40px; height: 40px; justify-content: center; align-items: center;">
+                <div style="color: #0F172A; font-size: 16px; line-height: 24px;">2</div>
+            </div>
+            <div class="image" style="background-image: url('data:image/svg+xml;base64,CjxzdmcgbWV4cG9ydD0iMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjY0IiBoZWlnaHQ9IjIiIHZpZXdCb3g9IjAgMCA2NCAyIj4KCTxwYXRoIGQ9Ik0wIDBMNjQgMEw2NCAyTDAgMkwwIDBaIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIDEgMCAwKSIgZmlsbD0icmdiKDIyNiwgMjMyLCAyNDApIi8+Cjwvc3ZnPgo='); width: 64px; height: 2px; background-size: cover"></div>
+            <div class="center-border" style="background: #F1F5F9; --border-radius: 9999px; display: flex; width: 40px; height: 40px; justify-content: center; align-items: center;">
+                <div style="color: #0F172A; font-size: 16px; line-height: 24px;">3</div>
+            </div>
+        </div>
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 64px; width: 100%; max-width: 480px; justify-content: space-around; margin-top: 8px;">
+            <div style="color: #2563EB; line-height: 20px; text-align: center; flex:1; font-weight: 600;">Event Details</div>
+            <div style="color: #64748B; line-height: 20px; text-align: center; flex:1; font-weight: 500;">Customize</div>
+            <div style="color: #64748B; line-height: 20px; text-align: center; flex:1; font-weight: 500;">Review</div>
+        </div>
+    </div>
+
+    <div class="inner-border" style="background: #FFFFFF; box-shadow: 0px 2px 4px -2px rgba(0, 0, 0, 0.10), 0px 4px 6px -1px rgba(0, 0, 0, 0.10); --border-style: solid; --border-color: #E5E7EB; --border-width: 1px; --border-radius: 12px; width: 100%; max-width: 800px; margin-top: 20px; padding: 40px 49px; display: flex; flex-direction: column; gap: 12px; z-index: 1;">
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+            <div>
+                <div style="color: #020817; line-height: 14px; margin-bottom: 8px;">Host Name <span style="color: red;">*</span></div>
+                <div class="input-container inner-border">
+                    <input type="text" id="host_name" name="host_name" class="form-input" required placeholder="Enter host name">
                 </div>
             </div>
-        </header>
-        <main>
-            <h2 class="step-title mb-2">Step 1: Event Details <span class="step-title-span"></span></h2>
-            <p class="mb-4 text-secondary step-subtitle">Tell us about your event to create personalized invitations.</p>
-
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="mb-3">
-                        <div class="flash-messages">
-                            <ul class="list-unstyled">
-                            {% for category, message in messages %}
-                                <li class="flash-{{ category }}">{{ message }}</li>
-                            {% endfor %}
-                            </ul>
-                        </div>
-                    </div>
-                {% endif %}
-            {% endwith %}
-
-            <form method="POST" action="{{ url_for('index') }}" enctype="multipart/form-data" autocomplete="off" id="mainForm">
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <label for="host_name" class="form-label">Host Name <span class="text-danger">*</span></label>
-                        <input type="text" id="host_name" name="host_name" class="form-control" required placeholder="e.g. Priya Sharma">
-                        <div class="invalid-feedback">This field is required.</div>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="event_type" class="form-label">Event Type <span class="text-danger">*</span></label>
-                        <select id="event_type" name="event_type" class="form-select" required>
-                            <option value="" disabled selected>Select event type</option>
-                            <option value="Wedding">Wedding</option>
-                            <option value="Birthday">Birthday</option>
-                            <option value="Anniversary">Anniversary</option>
-                            <option value="Corporate">Corporate</option>
-                            <option value="Other">Other</option>
-                        </select>
-                        <div class="invalid-feedback">This field is required.</div>
-                    </div>
+            <div>
+                <div style="color: #020817; line-height: 14px; margin-bottom: 8px;">Event Type <span style="color: red;">*</span></div>
+                <div class="input-container inner-border select-container">
+                    <select id="event_type" name="event_type" class="form-select" required>
+                        <option value="" disabled selected>Select event type</option>
+                        <option value="Wedding">Wedding</option>
+                        <option value="Birthday">Birthday</option>
+                        <option value="Anniversary">Anniversary</option>
+                        <option value="Corporate">Corporate</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
+            </div>
+        </div>
 
-                <div class="row g-4 mt-3">
-                    <div class="col-md-6">
-                        <label for="event_datetime" class="form-label">Event Date & Time <span class="text-danger">*</span></label>
-                        <input type="text" id="event_datetime" name="event_datetime" class="form-control datetimepicker" required placeholder="Select date & time">
-                        <div class="invalid-feedback">This field is required.</div>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="duration" class="form-label">Duration <span class="text-danger">*</span></label>
-                        <select id="duration" name="duration" class="form-select" required>
-                            <option value="" disabled selected>Select duration</option>
-                            <option value="1 hour">1 hour</option>
-                            <option value="2 hours">2 hours</option>
-                            <option value="3 hours">3 hours</option>
-                            <option value="4 hours">4 hours</option>
-                            <option value="5 hours">5 hours</option>
-                        </select>
-                        <div class="invalid-feedback">This field is required.</div>
-                    </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 12px;">
+            <div>
+                <div style="color: #020817; line-height: 14px; margin-bottom: 8px;">Event Date & Time <span style="color: red;">*</span></div>
+                <div class="input-container inner-border">
+                    <input type="text" id="event_datetime_picker" name="event_datetime_picker" class="form-input datetimepicker" required placeholder="Select date and time">
                 </div>
+            </div>
+            <div>
+                <div style="color: #020817; line-height: 14px; margin-bottom: 8px;">Duration <span style="color: red;">*</span></div>
+                <div class="input-container inner-border select-container">
+                    <select id="duration" name="duration" class="form-select" required>
+                        <option value="" disabled selected>Select duration</option>
+                        <option value="1 hour">1 hour</option>
+                        <option value="2 hours">2 hours</option>
+                        <option value="3 hours">3 hours</option>
+                        <option value="4 hours">4 hours</option>
+                        <option value="5 hours">5 hours</option>
+                    </select>
+                </div>
+            </div>
+        </div>
 
-                <div style="height: 2.5rem;"></div> <div class="row mt-4">
-                    <div class="col-12 d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary">Next</button>
-                    </div>
-                </div>
-            </form>
-        </main>
+        <div style="margin-top: 36px; display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" onclick="history.back();" style="background-color: #FFFFFF; border: 1px solid #E2E8F0; color: #020817; border-radius: 10px; display: flex; width: 120px; justify-content: center; align-items: center; padding: 14px 0; line-height: 20px; text-align: center; font-family: 'Hind', sans-serif; font-size: 14px; cursor: pointer; font-weight: 500; transition: background-color 0.2s, border-color 0.2s, color 0.2s;">
+                Back
+            </button>
+            <button type="submit" id="nextButtonIndex" style="background: #2563EB; border-radius: 10px; width: 120px; padding: 14px 0; color: #F8FAFC; line-height: 20px; text-align: center; font-family: 'Hind', sans-serif; font-size: 14px; border: 1px solid transparent; cursor: pointer; font-weight: 500; box-shadow: 0px 2px 4px 0px rgba(37, 99, 235, 0.20); position: relative; z-index: 10;">
+                  Next
+              </button>
+        </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script>
+
+    <div style="margin-top: 60px; margin-bottom: 40px; text-align: center; z-index: 1;">
+        <div style="color: #64748B; font-size: 16px; font-weight: 400; line-height: 24px;">
+            © 2025 VoiceVite. All rights reserved.
+        </div>
+    </div>
+
+</div>
+</form>
+
+<script>
 document.addEventListener('DOMContentLoaded', function() {
-    var form = document.getElementById('mainForm');
-    if (form) {
-        form.addEventListener('submit', function(event) {
-            if (!form.checkValidity()) {
-                event.preventDefault();
-                event.stopPropagation();
+    // Remove individual date and time pickers if they were previously initialized by flatpickr-init.js
+    // This script now handles all flatpickr initializations for this page.
+
+    // Initialize flatpickr with proper positioning
+    const dateTimeInput = document.querySelector('.datetimepicker');
+    if (dateTimeInput) {
+        flatpickr(dateTimeInput, {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            altInput: true,
+            altFormat: "F j, Y h:i K",
+            altInputClass: 'form-input',
+            minuteIncrement: 15,
+            defaultHour: 12,
+            defaultMinute: 0,
+            static: false,
+            position: 'auto',
+            positionElement: dateTimeInput.parentNode,
+            theme: 'light',
+            onOpen: function(selectedDates, dateStr, instance) {
+                const calendar = instance.calendarContainer;
+                // Ensure calendar is visible
+                calendar.style.opacity = '1';
+                calendar.style.visibility = 'visible';
+                // Position the calendar relative to the input container
+                const inputRect = dateTimeInput.getBoundingClientRect();
+                calendar.style.position = 'absolute';
+                calendar.style.top = (inputRect.bottom + window.scrollY) + 'px';
+                calendar.style.left = (inputRect.left + window.scrollX) + 'px';
+                calendar.style.zIndex = '99999';
+            },
+            onReady: function(selectedDates, dateStr, instance) {
+                // Ensure calendar is hidden initially
+                instance.calendarContainer.style.visibility = 'hidden';
+                instance.calendarContainer.style.opacity = '0';
+                // Position it absolutely but don't show it yet
+                instance.calendarContainer.style.position = 'absolute';
             }
-            form.classList.add('was-validated');
-        }, false);
+        });
+    }
+
+    const form = document.getElementById('eventForm');
+
+    function processFlatpickrValue(currentForm) {
+        const dateTimePickerInput = currentForm.elements['event_datetime_picker'];
+        let combinedDateTime = '';
+        const fpInstance = dateTimePickerInput._flatpickr;
+
+        if (fpInstance && fpInstance.selectedDates.length > 0) {
+            combinedDateTime = fpInstance.formatDate(fpInstance.selectedDates[0], "Y-m-d H:i");
+        } else if (fpInstance) { // Date picker exists but no date selected
+            combinedDateTime = ''; // Set to empty if no date is selected
+        } else { // Flatpickr instance not found (should not happen if initialized correctly)
+            combinedDateTime = dateTimePickerInput.value; // Fallback, might be altFormat or empty
+        }
+        
+        let hiddenInput = currentForm.elements['event_datetime'];
+        if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'event_datetime';
+            currentForm.appendChild(hiddenInput);
+        }
+        hiddenInput.value = combinedDateTime;
+    }
+
+    if (form) {
+        // Listener for form's 'submit' event (e.g., triggered by Enter key)
+        form.addEventListener('submit', function(event) {
+            processFlatpickrValue(this); // 'this' refers to the form
+        });
+
+        const nextButton = document.getElementById('nextButtonIndex');
+        if (nextButton) {
+            nextButton.addEventListener('click', function(event) {
+                event.preventDefault(); // Prevent the default submit action of the button
+                processFlatpickrValue(form); // Process Flatpickr data
+                form.submit(); // Manually submit the form
+            });
+        }
     }
 });
 </script>
+
 </body>
 </html>
