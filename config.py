@@ -17,11 +17,14 @@ class Config:
 
     # API Keys
     VAPI_API_KEY = os.getenv('VAPI_API_KEY')
+    VAPI_PUBLIC_KEY = os.getenv('VAPI_PUBLIC_KEY')
     VAPI_ASSISTANT_ID = os.getenv('VAPI_ASSISTANT_ID')
     ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
     AIRTABLE_PERSONAL_ACCESS_TOKEN = os.getenv('AIRTABLE_PERSONAL_ACCESS_TOKEN')
     GROK_API_KEY = os.getenv('GROK_API_KEY') # Or your preferred LLM API key
     LMNT_API_KEY = os.getenv('LMNT_API_KEY')
+    VAPI_PHONE_NUMBER_ID = os.getenv('VAPI_PHONE_NUMBER_ID')
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')  # Google's Gemini API key
 
     # Airtable Configuration
     AIRTABLE_BASE_ID = os.getenv('AIRTABLE_BASE_ID')

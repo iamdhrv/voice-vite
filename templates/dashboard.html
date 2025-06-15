@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceVite - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Hind:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-hover: #1D4ED8;
+            --background: #F8FAFC;
+            --foreground: #0F172A;
+            --muted: #64748B;
+            --border: #E2E8F0;
+            --card-bg: #FFFFFF;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Hind', sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* Decorative elements */
+        .deco-1 {
+            position: fixed;
+            top: 150px;
+            left: 100px;
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.25) 0%, rgba(59, 130, 246, 0.1) 100%);
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .deco-2 {
+            position: fixed;
+            top: 200px;
+            right: 70px;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%);
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .deco-3 {
+            position: fixed;
+            bottom: 150px;
+            left: 80px;
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.1) 100%);
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .deco-4 {
+            position: fixed;
+            bottom: 100px;
+            right: 90px;
+            width: 110px;
+            height: 110px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.1) 100%);
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .container-main {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header-title {
+            color: var(--primary);
+            font-size: 36px;
+            font-weight: 600;
+            line-height: 40px;
+            text-align: center;
+            margin: 28px 0 8px;
+            font-family: 'Hind', sans-serif;
+        }
+        
+        .step-title {
+            color: var(--foreground);
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 32px;
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* Dashboard specific styles */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .dashboard-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--foreground);
+            margin: 0;
+        }
+        
+        .event-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .event-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.2s ease;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .event-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .event-card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--foreground);
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .event-card-details {
+            margin-bottom: 1rem;
+        }
+        
+        .event-card-details p {
+            font-size: 0.9375rem;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .event-card-details i {
+            margin-right: 0.5rem;
+            color: var(--primary);
+            width: 20px;
+            text-align: center;
+        }
+        
+        .rsvp-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .rsvp-summary .badge {
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.35em 0.75em;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        
+        .event-card-footer {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+        
+        .status-badge {
+            font-weight: 500;
+            padding: 0.25em 0.75em;
+            border-radius: 9999px;
+        }
+        
+        .no-events-placeholder {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px dashed var(--border);
+            margin: 2rem 0;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .no-events-placeholder i {
+            font-size: 3.5rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            opacity: 0.8;
+        }
+        
+        .no-events-placeholder h2 {
+            color: var(--foreground);
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        
+        .no-events-placeholder p {
+            color: var(--muted);
+            margin-bottom: 1.5rem;
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            font-weight: 500;
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary i {
+            margin-right: 0.5rem;
+        }
+        
+        /* Flash messages */
+        .flash-messages {
+            margin-bottom: 1.5rem;
+        }
+        
+        .flash-messages .alert {
+            border-radius: 8px;
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            font-size: 0.9375rem;
+        }
+        
+        .flash-success {
+            background-color: #D1FAE5;
+            color: #065F46;
+            border-color: #A7F3D0;
+        }
+        
+        .flash-error {
+            background-color: #FEE2E2;
+            color: #B91C1C;
+            border-color: #FECACA;
+        }
+        
+        .flash-info {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+            border-color: #BFDBFE;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .dashboard-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            
+            .dashboard-title {
+                margin-bottom: 0.5rem;
+            }
+            
+            .event-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .no-events-placeholder {
+                padding: 2rem 1.5rem;
+            }
+            
+            .no-events-placeholder h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container dashboard-container mt-5 mb-5" style="max-width: 1140px;">
+        <header class="dashboard-header">
+            <h1 class="voicevite-title mb-0">Campaigns</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg rounded-3 shadow-sm">
+                <i class="bi bi-plus-circle-fill me-2"></i>Create New Event
+            </a>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-3">
+                    <div class="flash-messages">
+                        <ul class="list-unstyled">
+                            {% for category, message in messages %}
+                                <li class="flash-{{ category }}">{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if events_data and events_data|length > 0 %}
+            <div class="event-grid">
+                {% for event_item in events_data %}
+                <div class="event-card">
+                    <div class="event-card-body">
+                        <h5 class="event-card-title" style="color: var(--card-foreground);">{{ event_item.event.event_type or 'N/A' }}</h5>
+                        <div class="event-card-details">
+                            <p>
+                                <i class="bi bi-calendar-event"></i>
+                                {{ event_item.event.event_date.strftime('%a, %b %d, %Y') if event_item.event.event_date else 'Date TBD' }}
+                                {% if event_item.event.event_time %}
+                                at {{ event_item.event.event_time.strftime('%I:%M %p') }}
+                                {% endif %}
+                            </p>
+                            <p style="color: var(--muted-foreground);">
+                                <i class="bi bi-geo-alt-fill"></i> {{ event_item.event.location or 'Location TBD' }}
+                            </p>
+                            <p style="color: var(--muted-foreground);">
+                                <i class="bi bi-people-fill text-secondary"></i>
+                                {{ event_item.guest_count }} Guest{{ 's' if event_item.guest_count != 1 else '' }} invited
+                            </p>
+                        </div>
+                        <div class="rsvp-summary mb-2">
+                            <span class="badge bg-success text-white me-1"><i class="bi bi-check-circle-fill me-1"></i>{{ event_item.rsvp_summary.get('yes', 0) }} Yes</span>
+                            <span class="badge bg-danger text-white me-1"><i class="bi bi-x-circle-fill me-1"></i>{{ event_item.rsvp_summary.get('no', 0) }} No</span>
+                            <span class="badge bg-warning text-dark me-1"><i class="bi bi-question-circle-fill me-1"></i>{{ event_item.rsvp_summary.get('maybe', 0) }} Maybe</span>
+                            <span class="badge bg-secondary text-white"><i class="bi bi-hourglass-split me-1"></i>{{ event_item.rsvp_summary.get('pending', 0) }} Pending</span>
+                        </div>
+                    </div>
+                    <div class="event-card-footer d-flex justify-content-between align-items-center">
+                        <div>
+                            Status: 
+                            <span class="badge rounded-pill 
+                                {% if event_item.event.status.lower() == 'draft' %} text-bg-light 
+                                {% elif event_item.event.status.lower() == 'processing' %} text-bg-info
+                                {% elif event_item.event.status.lower() == 'calls initiated' %} text-bg-primary 
+                                {% elif event_item.event.status.lower() == 'completed' %} text-bg-success 
+                                {% elif event_item.event.status.lower().startswith('failed') %} text-bg-danger 
+                                {% else %} text-bg-secondary {% endif %} status-badge">
+                                {{ event_item.event.status | title }}
+                            </span>
+                        </div>
+                        <!-- Optional: View/Manage Link -->
+                        <!-- <a href="#" class="btn btn-sm btn-outline-primary disabled">View/Manage</a> -->
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-events-placeholder">
+                <i class="bi bi-calendar2-x d-block mb-3" style="font-size: 3.5rem; color: #6c757d;"></i>
+                <h2 class="mb-3" style="color: var(--foreground);">No Campaigns Yet</h2>
+                <p class="text-muted mb-3">It looks like you haven't created any VoiceVite campaigns. <br>Get started by clicking the button below!</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg rounded-3 shadow-sm"><i class="bi bi-plus-circle-fill me-2"></i>Create Your First Event</a>
+            </div>
+        {% endif %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Include Font Awesome for icons if desired, e.g., via CDN -->
+    <!-- <script src="https://kit.fontawesome.com/[YOUR_KIT_ID].js" crossorigin="anonymous"></script> -->
+</body>
+</html>

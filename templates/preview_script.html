@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceVite - Preview & Edit Script</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Hind:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-hover: #1D4ED8;
+            --background: #FFFFFF;
+            --foreground: #0F172A;
+            --muted: #64748B;
+            --border: #E2E8F0;
+            --card-bg: #FFFFFF;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Hind', sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* Decorative elements */
+        .deco-1 {
+            position: fixed;
+            top: 150px;
+            left: 100px;
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.25) 0%, rgba(59, 130, 246, 0.1) 100%);
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .deco-2 {
+            position: fixed;
+            top: 200px;
+            right: 70px;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%);
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .deco-3 {
+            position: fixed;
+            bottom: 150px;
+            left: 80px;
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.1) 100%);
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .deco-4 {
+            position: fixed;
+            bottom: 100px;
+            right: 90px;
+            width: 110px;
+            height: 110px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.1) 100%);
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .container-main {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header-title {
+            color: var(--primary);
+            font-size: 36px;
+            font-weight: 600;
+            line-height: 40px;
+            text-align: center;
+            margin: 28px 0 8px;
+            font-family: 'Hind', sans-serif;
+        }
+        
+        .step-title {
+            color: var(--foreground);
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 32px;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .form-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--card-shadow);
+        }
+        .event-summary-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--card-shadow);
+        }
+        .event-summary-card h5 {
+            color: var(--foreground);
+            margin-bottom: 1rem;
+            font-weight: 600;
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+        .event-summary-card p {
+            margin-bottom: .5rem;
+            color: var(--secondary-foreground);
+        }
+        .event-summary-card strong {
+            color: var(--foreground);
+        }
+        .form-label {
+            font-weight: 500;
+            color: var(--foreground);
+            margin-bottom: 8px;
+            display: block;
+            font-size: 14px;
+        }
+        
+        .form-control, textarea.form-control {
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+            background-color: var(--card-bg);
+            font-family: 'Hind', sans-serif;
+            min-height: 200px;
+        }
+        
+        .form-control:focus, textarea.form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+            outline: none;
+        }
+        .test-call-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 32px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .test-call-section .card-title {
+            color: var(--foreground);
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn {
+            font-family: 'Hind', sans-serif;
+            font-weight: 500;
+            border-radius: 8px;
+            padding: 10px 24px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background-color: #10B981;
+            border-color: #10B981;
+        }
+        
+        .btn-success:hover {
+            background-color: #0D9F6F;
+            border-color: #0D9F6F;
+            transform: translateY(-1px);
+        }
+        
+        .btn-danger {
+            background-color: #EF4444;
+            border-color: #EF4444;
+        }
+        
+        .btn-danger:hover {
+            background-color: #DC2626;
+            border-color: #DC2626;
+            transform: translateY(-1px);
+        }
+        
+        .btn-lg {
+            padding: 12px 32px;
+            font-size: 16px;
+        }
+        .classic-waveform {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 48px;
+            gap: 4px;
+            min-width: 200px;
+            margin: 0 auto 24px;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+        }
+        .classic-waveform.active {
+            opacity: 1;
+        }
+        .wave-bar {
+            width: 4px;
+            background: var(--primary);
+            border-radius: 2px;
+            transition: height 0.15s ease-in-out;
+            min-height: 8px;
+        }
+        .flash-messages {
+            margin-bottom: 24px;
+        }
+        
+        .flash-messages li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            border: 1px solid transparent;
+            margin-bottom: 8px;
+            list-style: none;
+        }
+        
+        .flash-error {
+            background-color: #FEE2E2;
+            color: #B91C1C;
+            border-color: #FECACA;
+        }
+        
+        .flash-success {
+            background-color: #D1FAE5;
+            color: #065F46;
+            border-color: #A7F3D0;
+        }
+        
+        .flash-info {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+            border-color: #BFDBFE;
+        }
+        
+        /* Preview Layout */
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .script-preview-section {
+            width: 100%;
+        }
+
+        .test-call-section {
+            width: 100%;
+            margin-top: 1.5rem;
+        }
+
+        .test-call-section .card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .test-call-section .card-body {
+            padding: 1.5rem;
+        }
+
+        .confirm-button-section {
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .confirm-button-section .btn {
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin: 48px 0 24px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .preview-container {
+                padding: 0 1rem;
+            }
+            
+            .test-call-section .card-body {
+                padding: 1.25rem;
+            }
+            
+            #start_test_call_btn,
+            #end_test_call_btn {
+                padding: 0.5rem 1.5rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Decorative background elements -->
+    <div class="deco-1"></div>
+    <div class="deco-2"></div>
+    <div class="deco-3"></div>
+    <div class="deco-4"></div>
+    <div class="container-main">
+        <header class="mb-4 text-center">
+            <h1 class="header-title">VoiceVite</h1>
+            <h2 class="step-title">Preview & Edit Invitation Script</h2>
+        </header>
+        <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-3">
+                        <div class="flash-messages">
+                            <ul class="list-unstyled">
+                                {% for category, message in messages %}
+                                    <li class="flash-{{ category }}">{{ message }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% if event_details %}
+            <div class="event-summary-card">
+                <h5 class="border-bottom pb-2 mb-3">Event Summary</h5>
+                <p><strong>Host:</strong> {{ event_details.host_name }}</p>
+                <p><strong>Event Type:</strong> {{ event_details.event_type }}</p>
+                <p><strong>Date & Time:</strong> {{ event_details.event_date.strftime('%A, %B %d, %Y') if event_details.event_date }} at {{ event_details.event_time.strftime('%I:%M %p') if event_details.event_time }}</p>
+                <p><strong>Location:</strong> {{ event_details.location }}</p>
+                {% if event_details.background_music_url %}
+                    <p><strong>Background Music:</strong> {{ event_details.background_music_url | replace("URL_TO_GENTLE_MUSIC.mp3", "Gentle Instrumental") | replace("URL_TO_CELEBRATORY_MUSIC.mp3", "Celebratory Tune") }}</p>
+                {% endif %}
+                <!-- Add more details as needed -->
+            </div>
+            {% else %}
+            <div class="alert alert-warning">Event details not available.</div>
+            {% endif %}
+
+            <div class="preview-container">
+                <form method="POST" action="{{ url_for('confirm_and_send_invitations') }}" id="scriptForm">
+                    <input type="hidden" name="event_id" value="{{ event_id }}">
+                    
+                    <div class="script-preview-section">
+                        <div class="mb-3">
+                            <label for="script_preview" class="form-label fs-5">Invitation Script</label>
+                            <p class="form-text" style="color: var(--muted-foreground);">Review and edit the AI-generated script below. Ensure placeholders like <strong>{{GuestName}}</strong> (if used by your prompt strategy) are kept for personalization.</p>
+                            <textarea id="script_preview" name="final_script" rows="15" class="form-control">{{ generated_script | safe }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="test-call-section">
+                        <div class="card shadow-sm">
+                            <div class="card-body text-center">
+                                <h5 class="card-title mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-telephone-outbound-fill me-2" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M1.885.511a1.745 1.745 0 0 1 2.61.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511zM11 .5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V1.707l-4.146 4.147a.5.5 0 0 1-.708-.708L14.293 1H11.5a.5.5 0 0 1-.5-.5z"/>
+                                    </svg>
+                                    Test Your Invitation Call
+                                </h5>
+                                <div id="classic-waveform" class="classic-waveform mb-3">
+                                    <!-- Bars will be animated by JS -->
+                                </div>
+                                <div class="mt-3">
+                                    <button type="button" id="start_test_call_btn" class="btn btn-success btn-lg rounded-3 px-5 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-play-circle-fill me-2" viewBox="0 0 16 16">
+                                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM6.79 5.093A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814l-3.5-2.5z"/>
+                                        </svg>
+                                        Start Test Call
+                                    </button>
+                                    <button type="button" id="end_test_call_btn" class="btn btn-danger btn-lg rounded-3 px-5 shadow-sm" style="display:none;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-stop-circle-fill me-2" viewBox="0 0 16 16">
+                                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5 5.5A.5.5 0 0 1 5.5 5h5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-.5.5h-5a.5.5 0 0 1-.5-.5v-5z"/>
+                                        </svg>
+                                        End Call
+                                    </button>
+                                    <span class="spinner-border spinner-border-sm ms-2" id="test_call_spinner" role="status" aria-hidden="true" style="display: none;"></span>
+                                </div>
+                                <div id="testCallStatus" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="confirm-button-section mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg w-100" id="confirmButton">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-send-fill me-2" viewBox="0 0 16 16">
+                                <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15Zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471-.47 1.178Z"/>
+                            </svg>
+                            Confirm & Send Invitations
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Classic waveform animation
+        const waveform = document.getElementById('classic-waveform');
+        function renderWaveformBars() {
+            waveform.innerHTML = '';
+            for (let i = 0; i < 24; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'wave-bar';
+                bar.style.height = (16 + Math.random() * 32) + 'px';
+                waveform.appendChild(bar);
+            }
+        }
+        function animateWaveformBars() {
+            const bars = waveform.querySelectorAll('.wave-bar');
+            bars.forEach(bar => {
+                bar.style.height = (16 + Math.random() * 32) + 'px';
+            });
+        }
+        renderWaveformBars();
+        setInterval(animateWaveformBars, 200);
+        // Backend-driven test call logic
+        let testCallId = null;
+        const startBtn = document.getElementById('start_test_call_btn');
+        const endBtn = document.getElementById('end_test_call_btn');
+        const spinner = document.getElementById('test_call_spinner');
+        const testCallStatusDiv = document.getElementById('testCallStatus');
+        const scriptPreviewTextarea = document.getElementById('script_preview');
+        const eventIdInput = document.querySelector('input[name="event_id"]');
+        function showStatus(msg, type = 'info') {
+            let alertClass = 'flash-info';
+            if (type === 'success') alertClass = 'flash-success';
+            if (type === 'error') alertClass = 'flash-error';
+            
+            testCallStatusDiv.innerHTML = ''; // Clear previous
+            const li = document.createElement('li');
+            li.className = alertClass; li.textContent = msg; testCallStatusDiv.appendChild(li);
+        }
+        startBtn.addEventListener('click', async function() {
+            spinner.style.display = 'inline-block';
+            startBtn.disabled = true;
+            showStatus('Initiating test call...');
+            const scriptContent = scriptPreviewTextarea.value;
+            const eventId = eventIdInput ? eventIdInput.value : null;
+            if (!eventId || !scriptContent.trim()) {
+                showStatus('Script and Event ID are required for test call.', 'error');
+                spinner.style.display = 'none';
+                startBtn.disabled = false;
+                return;
+            }
+            try {
+                const response = await fetch("{{ url_for('send_test_call') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ script_content: scriptContent, event_id: eventId })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    showStatus(result.message || 'Test call initiated successfully!', 'success');
+                    startBtn.style.display = 'none';
+                    endBtn.style.display = 'inline-block';
+                } else {
+                    showStatus('Error: ' + (result.message || 'Failed to initiate test call.'), 'error');
+                    startBtn.disabled = false;
+                }
+            } catch (err) {
+                showStatus('Error: Could not reach server or client-side error during test call.', 'error');
+                startBtn.disabled = false;
+            } finally {
+                spinner.style.display = 'none';
+            }
+        });
+        endBtn.addEventListener('click', async function() {
+            endBtn.disabled = true;
+            showStatus('Ending test call...');
+            try {
+                const response = await fetch("/end-test-call", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    showStatus(result.message || 'Test call ended.', 'info');
+                } else {
+                    showStatus('Error: ' + (result.message || 'Failed to end test call.'), 'error');
+                }
+            } catch (err) {
+                showStatus('Error ending test call.', 'error');
+            } finally {
+                endBtn.disabled = false;
+                endBtn.style.display = 'none';
+                startBtn.style.display = 'inline-block';
+            }
+        });
+    </script>
+</body>
+</html>
